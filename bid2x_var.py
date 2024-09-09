@@ -55,7 +55,7 @@ API_SCOPES = [
   'https://www.googleapis.com/auth/display-video',
   'https://www.googleapis.com/auth/spreadsheets']
 API_NAME = 'displayvideo'
-API_VERSION = 'v2'
+API_VERSION = 'v3'
 
 # Variables that have specific values that cannot be
 # set through options

@@ -156,34 +156,41 @@ class bid2x_application():
 
   def auth_dv_service(self,
                       path_to_service_account_json_file: str,
-                      impersonation_email: str) -> httplib2.Http:
+                      impersonation_email: str) -> Any:
 
-    """Creates credentials based on a service account and email
+    """Creates DV credentials based on a service account and email
+
     Args:
       path_to_service_account_json_file: file downloaded from GCP
       impersonation_email: service account email address
+
     Returns:
       Returns http object
     """
-    """Authorizes an httplib2.Http instance
-    using service account credentials."""
+
+    """Performs OAuth2 for a DV360 service using 
+    service account credentials."""
 
     # Load the service account credentials from the specified JSON keyfile.
-    credentials = ServiceAccountCredentials.from_json_keyfile_name(
-        path_to_service_account_json_file,
-        scopes=self.scopes)
+    service_credentials = ServiceAccountCredentials.from_json_keyfile_name(
+      path_to_service_account_json_file,
+      scopes=self.scopes)
 
     # Configure impersonation (if applicable).
     if impersonation_email:
-        credentials = credentials.create_delegated(impersonation_email)
-    # Use the credentials to authorize an httplib2.Http instance.
-    dv_http_service = credentials.authorize(httplib2.Http())
+        service_credentials = service_credentials.create_delegated(
+          impersonation_email)
 
-    if dv_http_service:
+    discovery_url = f'https://displayvideo.googleapis.com/$discovery' + \
+      f'/rest?version={self.dv_api_version}'
+
+    if service_credentials:
       self.dv_service = discovery.build(self.dv_api_name,
                                         self.dv_api_version,
-                                        http=dv_http_service)
-    return dv_http_service
+                                        credentials=service_credentials,
+                                        discoveryServiceUrl=discovery_url)
+    return self.dv_service
+
 
   def auth_sheets(self, auth_file: str, auth_email_account: str) -> Any:
     # Set up service object to talk to Google Sheets.
