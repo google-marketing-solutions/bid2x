@@ -14,6 +14,11 @@ class bid2x_model():
   algorithm_id: int
   cb_algorithm: str
   debug: bool
+  update_row: int
+  update_col: int
+  test_row: int
+  test_col: int
+
 
   def __init__(self, name: str, campaign_id: int, advertiser_id: int,
                algorithm_id: int, debug: bool):
@@ -24,18 +29,60 @@ class bid2x_model():
     self.cb_algorithm = ""  # Initially set to empty
     self.debug = debug
 
-  def __str__(self) -> None:
-    print(f'Name:{self.name},')
-    print(f'AdvertiserID:{self.advertiser_id},')
-    print(f'CampaignID:{self.campaign_id},')
-    print(f'AlgorithmID:{self.algorithm_id}')
-    print(f'CBAlgorithm:{self.cb_algorithm}')
+
+  def __str__(self)->str:
+    """Override str method for this object to return a sensible string
+       showing the object's main properties.
+    Args:
+       None
+    Returns:
+       A formatted string containing the main object properties.
+    """
+    zone_str = f'Zone Name:{self.name}\n'+\
+      f'\tAdvertiserID:{self.advertiser_id},\n'+\
+      f'\tCampaignID:{self.campaign_id},\n'+\
+      f'\tAlgorithmID:{self.algorithm_id}\n'+\
+      f'\tCBAlgorithm:{self.cb_algorithm}\n'+\
+      f'\tupdate_row:{self.update_row}\n'+\
+      f'\tupdate_col:{self.update_col}\n'+\
+      f'\ttest_row:{self.test_row}\n'+\
+      f'\ttest_col:{self.test_col}\n'
+    
+    return zone_str
+
 
   def set_name(self,name:str) -> None:
     self.name = name
 
+
+  def set_spreadsheet_row_col(self,
+                              update_row:int, 
+                              update_col:int,
+                              test_row:int,
+                              test_col:int)->None:
+    """Setter function for row and col variables on update and 
+      on test.
+    Args:
+      update_row: The row number to use for an update string when the
+                  custom bidding algorithm is changed (--au argument)
+      update_col: The column number (not letter) to use for an update string
+                  when the custom bidding algorithm is changed.
+      test_row:   The row number to use for an update string when a
+                  test is run (--at argument).
+      test_col:   The column number (not letter) to use for an update string
+                   when a test is run.
+    Returns:
+      None
+    """
+    self.update_row = update_row
+    self.update_col = update_col
+    self.test_row = test_row
+    self.test_col = test_col
+
+
   def set_cb_algorithm (self,str_algor: str) -> None:
     self.cb_algorithm = str_algor
+
 
   def update_custom_bidding_scripts(self,
                                     service: Any,

@@ -13,7 +13,6 @@ from googleapiclient.errors import HttpError
 from http import HTTPStatus
 
 from bid2x_spreadsheet import bid2x_spreadsheet
-from bid2x_model import bid2x_model
 from bid2x_util import *
 import bid2x_var
 
@@ -27,7 +26,7 @@ class bid2x_application():
   dv_api_version: str
 
   sheet: bid2x_spreadsheet
-  zone_array = list[bid2x_model]
+  zone_array = list[Any]
 
   action_list_algos: bool
   action_list_scripts: bool
@@ -118,10 +117,49 @@ class bid2x_application():
     self.bidding_factor_high = bid2x_var.BIDDING_FACTOR_HIGH
     self.bidding_factor_low = bid2x_var.BIDDING_FACTOR_LOW
 
-  def __str__(self) -> None:
-    print(f'trix: {self.trix}')
-    print(f'dv_api_name: {self.dv_api_name}')
-    print(f'dv_api_version: {self.dv_api_version}')
+  def __str__(self)->str:
+    """Override str method for this object to return a sensible string
+       showing the object's main properties.
+    Args:
+       None
+    Returns:
+       A formatted string containing a formatted list of object properties.
+    """
+    return_str = f'trix: {self.trix}\n'+\
+      f'dv_api_name: {self.dv_api_name}\n'+\
+      f'dv_api_version: {self.dv_api_version}'+\
+      f'scopes: {self.scopes}\n'+\
+      f'dv_api_name: {self.dv_api_name}\n'+\
+      f'dv_api_version: {self.dv_api_version}\n'+\
+      f'dv_service: {self.dv_service}\n'+\
+      f'action_list_algos: {self.action_list_algos}\n'+\
+      f'action_list_scripts: {self.action_list_scripts}\n'+\
+      f'action_create_algorithm: {self.action_create_algorithm}\n'+\
+      f'action_update_spreadsheet: {self.action_update_spreadsheet}\n'+\
+      f'action_remove_algorithm: {self.action_remove_algorithm}\n'+\
+      f'action_update_scripts: {self.action_update_scripts}\n'+\
+      f'action_test: {self.action_test}\n'+\
+      f'debug: {self.debug}\n'+\
+      f'clear_onoff: {self.clear_onoff}\n'+\
+      f'defer_pattern: {self.defer_pattern}\n'+\
+      f'alternate_algorithm: {self.alternate_algorithm}\n'+\
+      f'new_algo_name: {self.new_algo_name}\n'+\
+      f'new_algo_display_name: {self.new_algo_display_name}\n'+\
+      f'line_item_name_pattern: {self.line_item_name_pattern}\n'+\
+      f'cb_tmp_file_prefix: {self.cb_tmp_file_prefix}\n'+\
+      f'cb_last_update_file_prefix: {self.cb_last_update_file_prefix}\n'+\
+      f'service_account_email: {self.service_account_email}\n'+\
+      f'partner_id: {self.partner_id}\n'+\
+      f'advertiser_id: {self.advertiser_id}\n'+\
+      f'cb_algo_id: {self.cb_algo_id}\n'+\
+      f'json_auth_file: {self.json_auth_file}\n'+\
+      f'floodlight_id_list: {self.floodlight_id_list}\n'+\
+      f'zones_to_process: {self.zones_to_process}\n'+\
+      f'attr_model_id: {self.attr_model_id}\n'+\
+      f'bidding_factor_high: {self.bidding_factor_high}\n'+\
+      f'bidding_factor_low: {self.bidding_factor_low}\n'
+    
+    return return_str
 
   def set_trix(self,str_trix: str) -> None:
     self.trix = str_trix
@@ -621,8 +659,7 @@ class bid2x_application():
 
 
   def generate_cb_script_max_of_conversion_counts (self,
-                                                   zone_string: str,
-                                                   test_run:bool=False) -> str:
+                                                   zone_string: str) -> str:
     """Generate a Custom Bidding script based on Max conversion counts across
       a single sales zone.
     Args:
@@ -762,127 +799,5 @@ class bid2x_application():
 
     if len(processed_line_items) == 0:
       cust_bidding_function_string = 'return 0;'
-
-    # Update the tab named 'CB_Scripts' in the associated spreadsheet.
-    # Spreadsheet tab name should match key in dict.
-    update_row = None
-    try:
-      cbscripts_sheet = \
-        self.sheet.gc.open_by_key(self.sheet.sheet_id).worksheet("CB_Scripts")
-    except gspread.exceptions.SpreadsheetNotFound:
-      print("Error: Spreadsheet not found for worksheet CB_Scripts.")
-      raise # Reraises the exception.
-    except gspread.exceptions.WorksheetNotFound as e:
-      print(f'Error connecting to worksheet CB_Scripts: {e}')
-      raise # Reraises the exception.
-    except gspread.exceptions.APIError as e:
-      print('Error communicating with Google Sheets API for ',
-            f'worksheet CB_Scripts: {e}')
-      raise # Reraises the exception.
-    except TimeoutError:
-      print("Request timed out. Please check your network connection.")
-      raise # Reraises the exception.
-    except gspread.exceptions.GSpreadException as e:
-      print(f"An unexpected error occurred: {e}")
-      raise # Reraises the exception.
-    except HttpError as err:
-      # If the error is a rate limit or connection error,
-      # wait and try again.
-      if is_recoverable_http_error(err.resp.status):
-        time.sleep(bid2x_var.HTTP_RETRY_TIMEOUT)
-        cbscripts_sheet = \
-          self.sheet.gc.open_by_key(self.sheet.sheet_id).worksheet("CB_Scripts")
-      # For all other errors raise the exception
-      else:
-        print(f'Error with Sheets trying to open Sheet:{e}')
-        raise
-
-    # Direct mapping from zone_string to row location
-    # in CB_Scripts tab in Sheets.
-    if zone_string.lower() == "az":
-      update_row = 2
-    elif zone_string.lower() == "cz":
-      update_row = 3
-    elif zone_string.lower() == "ez_en":
-      update_row = 4
-    elif zone_string.lower() == "ez_fr":
-      update_row = 5
-    elif zone_string.lower() == "wz":
-      update_row = 6
-    else:
-      print(f'Issue: passed zone_string "{zone_string}" ',
-            'does not match expected inputs')
-
-    # Write the most recent custom bidding function to the right
-    # place on the CB_Scripts tab.
-    if update_row:
-      if test_run:
-        try:
-          cbscripts_sheet.update(
-            values=[[cust_bidding_function_string,f"{datetime.now()}"]],
-            range_name=f'D{update_row}')
-        except gspread.exceptions.SpreadsheetNotFound:
-          print("Error: writing to CB_Scripts tab.")
-          raise # Reraises the exception.
-        except gspread.exceptions.WorksheetNotFound as e:
-          print(f'Error connecting to worksheet CB_Scripts: {e}')
-          raise # Reraises the exception.
-        except gspread.exceptions.APIError as e:
-          print('Error communicating with Google Sheets API for ',
-                f'worksheet CB_Scripts: {e}')
-          raise # Reraises the exception.
-        except TimeoutError:
-          print("Request timed out. Please check your network connection.")
-          raise # Reraises the exception.
-        except gspread.exceptions.GSpreadException as e:
-          print(f"An unexpected error occurred: {e}")
-          raise # Reraises the exception.
-        except HttpError as err:
-          # If the error is a rate limit or connection error,
-          # wait and try again.
-          if is_recoverable_http_error(err.resp.status):
-            time.sleep(bid2x_var.HTTP_RETRY_TIMEOUT)
-            cbscripts_sheet.update(
-              values=[[cust_bidding_function_string,f"{datetime.now()}"]],
-              range_name=f'D{update_row}')
-          # For all other errors raise the exception
-          else:
-            print(f'Error with writing to CB_Scripts tab:{e}')
-            raise
-
-      else:
-        try:
-          cbscripts_sheet.update(
-            values=[[cust_bidding_function_string,f"{datetime.now()}"]],
-            range_name=f'B{update_row}')
-        except gspread.exceptions.SpreadsheetNotFound:
-          print("Error: updating CB_Scripts tab.")
-          raise # Reraises the exception.
-        except gspread.exceptions.WorksheetNotFound as e:
-          print(f'Error connecting to worksheet CB_Scripts: {e}')
-          raise # Reraises the exception.
-        except gspread.exceptions.APIError as e:
-          print('Error communicating with Google Sheets API for ',
-                f'worksheet CB_Scripts: {e}')
-          raise # Reraises the exception.
-        except TimeoutError:
-          print("Request timed out. Please check your network connection.")
-          raise # Reraises the exception.
-        except gspread.exceptions.GSpreadException as e:
-          print(f"An unexpected error occurred: {e}")
-          raise # Reraises the exception.
-        except HttpError as err:
-          # If the error is a rate limit or connection error,
-          # wait and try again.
-          if is_recoverable_http_error(err.resp.status):
-            time.sleep(bid2x_var.HTTP_RETRY_TIMEOUT)
-            cbscripts_sheet.update(
-              values=[[cust_bidding_function_string,f"{datetime.now()}"]],
-              range_name=f'B{update_row}')
-
-          # For all other errors raise the exception
-          else:
-            print(f'Error updating CB_Scripts tab:{e}')
-            raise
 
     return cust_bidding_function_string

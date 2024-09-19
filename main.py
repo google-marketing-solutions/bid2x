@@ -113,7 +113,6 @@ def main(argv):
     print("General settings:")
     print(f'  Debug is: {app.debug}')
     print(f'  DV service: {app.dv_service}')
-    print(f'  DV service: {app.dv_service}')
     print(f'  Sheets service: {app.sheet.sheets_service}')
     print(f'  PARTNER_ID: {app.partner_id}')
     print(f'  ADVERTISER_ID: {app.advertiser_id}')
@@ -184,15 +183,18 @@ def main(argv):
 
     if app.action_update_scripts:
       # Update the custom bidding scripts in DV360.
+
       # Create custom bidding script for DV360 as a string - per sales zone.
       for zone in app.zone_array:
         # Go into Google Sheets and generate CB function per sales zone.
         custom_bidding_function_string = \
           app.generate_cb_script_max_of_conversion_counts(zone.name)
+        
         if app.debug:
           # Show the generated custom bidding script.
           print('custom_bidding_function_string:\n',
                 f'{custom_bidding_function_string}\n')
+          
         # Get a list of line items this will affect.
         line_item_array = \
           app.sheet.get_affected_line_items_from_sheet(zone.name)
@@ -233,18 +235,33 @@ def main(argv):
             zone.algorithm_id,
             filename,
             line_item_array)
+
           if not update_result:
             print(f"Update of C.B. Script for zone {zone.name} failed.")
           else:
             print(f"Update of C.B. Script for zone {zone.name} succeeded.")
+            # Update of C.B. script was successful, update the Google
+            # Sheets spreadsheet tab named 'CB_Scripts'
+            app.sheet.update_cb_scripts_tab(zone,
+                                            custom_bidding_function_string,
+                                            test_run=False)
+
     if app.action_test:
-      # Test for generating scripts - just generate script and update.
-      # 'Test Run Script' column in Trix
-      for zone in app.zone_array:
-        print(f"""rules for zone {zone.name}:\n
-              {app.generate_cb_script_max_of_conversion_counts(
-                zone.name,
-                test_run=True)}""")
+      # Generate the Custom Bidding Script.
+      custom_bidding_string = app.generate_cb_script_max_of_conversion_counts(
+        zone.name)
+      # Print the value of the script to the console - since this runs 
+      # typically as a Cloud Function then this will end up in the logs.
+      print(f"""rules for zone {zone.name}:\n
+            {custom_bidding_string}""")
+      
+      # Write the Test Run out to the test column in the associated
+      # Google Sheet in the tab 'CB_Scripts'
+      app.sheet.update_cb_scripts_tab(
+        zone,
+        custom_bidding_string,
+        test_run=True)
+
     if app.action_update_spreadsheet:
       app.sheet.read_dv_line_items (app.dv_service,
                                     app.line_item_name_pattern,
@@ -286,7 +303,7 @@ app = bid2x_application(
 app.zone_array = []
 
 if bid2x_var.ZONES_TO_PROCESS is None:
-  bid2x_var.ZONES_TO_PROCESS = 'z1,z2'
+  bid2x_var.ZONES_TO_PROCESS = 'c1,c2'
 zone_list = bid2x_var.ZONES_TO_PROCESS.split(",")
 for zone in zone_list:
   if zone.lower() == 'c1':
@@ -295,35 +312,45 @@ for zone in zone_list:
                   10000001,                 # campaign id
                   bid2x_var.ADVERTISER_ID,  # advertiser id
                   1000001,                  # algorithm id
-                  bid2x_var.DEBUG))         # debug flag
+                  bid2x_var.DEBUG,          # debug flag
+                  2,bid2x_var.DEFAULT_CB_SCRIPT_COL_UPDATE,
+                  2,bid2x_var.DEFAULT_CB_SCRIPT_COL_TEST))
   elif zone.lower() == 'c2':
     app.zone_array.append(
       bid2x_model("Campaign2",              # name
                   10000002,                 # campaign id
                   bid2x_var.ADVERTISER_ID,  # advertiser id
                   1000002,                  # algorithm id
-                  bid2x_var.DEBUG))         # debug flag
+                  bid2x_var.DEBUG,          # debug flag
+                  3,bid2x_var.DEFAULT_CB_SCRIPT_COL_UPDATE,
+                  3,bid2x_var.DEFAULT_CB_SCRIPT_COL_TEST))  
   elif zone.lower() == 'c3':
     app.zone_array.append(
       bid2x_model("Campaign3",              # name
                   10000003,                 # campaign id
                   bid2x_var.ADVERTISER_ID,  # advertiser id
                   1000003,                  # algorithm id
-                  bid2x_var.DEBUG))         # debug flag
+                  bid2x_var.DEBUG,          # debug flag
+                  4,bid2x_var.DEFAULT_CB_SCRIPT_COL_UPDATE,
+                  4,bid2x_var.DEFAULT_CB_SCRIPT_COL_TEST))
   elif zone.lower() == 'c4':
     app.zone_array.append(
       bid2x_model("Campaign4",              # name
                   10000004,                 # campaign id
                   bid2x_var.ADVERTISER_ID,  # advertiser id
                   1000004,                  # algorithm id
-                  bid2x_var.DEBUG))         # debug flag
+                  bid2x_var.DEBUG,          # debug flag
+                  5,bid2x_var.DEFAULT_CB_SCRIPT_COL_UPDATE,
+                  5,bid2x_var.DEFAULT_CB_SCRIPT_COL_TEST))
   elif zone.lower() == 'c5':
     app.zone_array.append(
       bid2x_model("Campaign5",              # name
                   10000005,                 # campaign id
                   bid2x_var.ADVERTISER_ID,  # advertiser id
                   1000005,                  # algorithm id
-                  bid2x_var.DEBUG))         # debug flag
+                  bid2x_var.DEBUG,          # debug flag
+                  6,bid2x_var.DEFAULT_CB_SCRIPT_COL_UPDATE,
+                  6,bid2x_var.DEFAULT_CB_SCRIPT_COL_TEST))
 
 # Take the global variables assigned through the command line arguments and
 # copy them to app.* now that they have been created in the previous step.

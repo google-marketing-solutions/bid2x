@@ -36,7 +36,7 @@ CB_ALGO_ID = 1000000
 FLOODLIGHT_ID_LIST = [1000001,1000002]
 ATTR_MODEL_ID = 0
 
-ZONES_TO_PROCESS = "z1,z2,z3,z4,z5"
+ZONES_TO_PROCESS = "c1,c2,c3,c4,c5"
 
 # Define Spreadsheet-specific defaults.
 SPREADSHEET_KEY = 'abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr'
@@ -50,6 +50,10 @@ COLUMN_LINEITEMTYPE = 'D'
 COLUMN_CAMPAIGNID = 'E'
 COLUMN_ADVERTISERID = 'F'
 COLUMN_CUSTOMBIDDING = 'K'
+
+# Definitions for Sheets tab with updates on scripts.
+DEFAULT_CB_SCRIPT_COL_UPDATE = 2
+DEFAULT_CB_SCRIPT_COL_TEST = 4
 
 API_SCOPES = [
   'https://www.googleapis.com/auth/display-video',

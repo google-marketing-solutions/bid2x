@@ -8,9 +8,8 @@ from typing import Any
 from bid2x_util import *
 
 import time
+from datetime import datetime
 import gspread
-
-
 from bid2x_model import bid2x_model
 import bid2x_var
 
@@ -47,10 +46,19 @@ class bid2x_spreadsheet():
     self.clear_onoff = True
     self.gc = gspread.service_account(filename=auth_filename)
 
-  def __str__(self) -> None:
-    print(f'SheetID:{self.sheet_id},')
-    print(f'sheet_service:{self.sheet_service},')
-    print(f'gc:{self.gc},')
+  def __str__(self) -> str:
+    """Override str method for this object to return a sensible string
+       showing the object's main properties.
+    Args:
+       None
+    Returns:
+       A formatted string containing the main object properties.
+    """
+    str_value =  f'SheetID:{self.sheet_id},\n'+\
+      f'sheet_service:{self.sheet_service},\n'+\
+      f'gc:{self.gc},'
+    
+    return str_value
 
   def set_name(self, name:str) -> None:
     self.sheet_id = name
@@ -58,7 +66,7 @@ class bid2x_spreadsheet():
   def read_dv_line_items (self,
                           service: Any,
                           line_item_name_pattern: str,
-                          zone_array: bid2x_model,
+                          zone_array: Any,
                           defer_pattern: bool) -> bool:
 
     """Read DV360 line items and populate the associated spreadsheet's
@@ -414,5 +422,68 @@ class bid2x_spreadsheet():
             values=onOff_Array, range_name=f'{self.column_custombidding}2')
         else:
           raise
+
+    return True
+
+
+  def update_cb_scripts_tab(self,
+                            zone: bid2x_model,
+                            cust_bidding_function_string: str,
+                            test_run: bool)->bool:
+    """This method updates the spreadsheet status tab (usually called
+      'CB Scripts') with the most recent script uploads and script tests
+      that are run using the system.  This tab provides a convenient way
+      to see the recent changes to all custom bidding scripts.
+    Args:
+      zone: A bid2x_model object containing (most importantly for this method)
+            the rows and columns within the status tab to update.
+      cust_bidding_function_string: The string that was generated for the
+                                    update or test.
+      test_run: A Boolean indicating that the call is for a test when True.
+                Otherwise it is assumed that the call is being made in 
+                conjunction with an update to the actual script.
+    Returns:
+      True on successful completion of the function.
+    """
+    # Update CB_Scripts tab
+    # Spreadsheet tab name should match key in dict.
+    update_row = None
+    try:
+      cbscripts_sheet = \
+        self.gc.open_by_key(self.sheet_id).worksheet("CB_Scripts")
+    except gspread.exceptions.SpreadsheetNotFound:
+      print("Error: Spreadsheet not found for worksheet CB_Scripts.")
+      raise # Reraises the exception.
+    except gspread.exceptions.WorksheetNotFound as e:
+      print(f'Error connecting to worksheet CB_Scripts: {e}')
+      raise # Reraises the exception.
+    except gspread.exceptions.APIError as e:
+      print(f"Error communicating with Google Sheets API for worksheet CB_Scripts: {e}")
+      raise # Reraises the exception.
+    except TimeoutError:
+      print("Request timed out. Please check your network connection.")
+      raise # Reraises the exception.
+    except gspread.exceptions.GSpreadException as e:
+      print(f"An unexpected error occurred: {e}")
+      raise # Reraises the exception.
+
+    # Work out the row and column for this update.
+    if not test_run:
+      update_row = zone.update_row
+      update_col = chr(64 + zone.update_col)
+    else:
+      update_row = zone.test_row
+      update_col = chr(64 + zone.test_col)
+
+    # Write the most recent custom bidding function to the right
+    # place on the CB_Scripts tab.
+    if update_row:
+      try:
+        cbscripts_sheet.update(
+          values=[[cust_bidding_function_string,f"{datetime.now()}"]],
+          range_name=f'{update_col}{update_row}')
+      except Exception as e:
+        print(f'Error updating test run into worksheet: {e}')
+        raise # Reraises the exception.
 
     return True
