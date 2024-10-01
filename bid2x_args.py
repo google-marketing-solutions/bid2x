@@ -57,6 +57,9 @@ def process_command_line_args ()-> None:
                       help="DV360 Partner ID to use")
 
   # default value names / filenames
+  parser.add_argument("-i","--input_file",
+                      default=bid2x_var.INPUT_FILE,
+                      help="JSON file to load config from")
   parser.add_argument("-j","--json_file",
                       default=bid2x_var.JSON_AUTH_FILE,
                       help="JSON auth filename to use")
@@ -161,3 +164,4 @@ def process_command_line_args ()-> None:
   bid2x_var.LINE_ITEM_NAME_PATTERN = args["li_pattern"]
 
   bid2x_var.JSON_AUTH_FILE = args["json_file"]
+  bid2x_var.INPUT_FILE = args["input_file"]

@@ -10,7 +10,7 @@ from bid2x_util import *
 import time
 from datetime import datetime
 import gspread
-from bid2x_model import bid2x_model
+# from bid2x_model import bid2x_model
 import bid2x_var
 
 class bid2x_spreadsheet():
@@ -20,12 +20,12 @@ class bid2x_spreadsheet():
   sheets_service = None
   json_auth_file: str
   column_status: str
-  column_lineitemid: str
-  column_lineitemname: str
-  column_lineitemtype: str
-  column_campaignid: str
-  column_advertiserid: str
-  column_custombidding: str
+  column_lineitem_id: str
+  column_lineitem_name: str
+  column_lineitem_type: str
+  column_campaign_id: str
+  column_advertiser_id: str
+  column_custom_bidding: str
   debug: bool
   clear_onoff: bool
   gc: gspread
@@ -36,29 +36,39 @@ class bid2x_spreadsheet():
     self.json_auth_file = auth_filename
     self.sheets_service = None
     self.column_status = 'A'
-    self.column_lineitemid = 'B'
-    self.column_lineitemname = 'C'
-    self.column_lineitemtype = 'D'
-    self.column_campaignid = 'E'
-    self.column_advertiserid = 'F'
-    self.column_custombidding = 'K'
+    self.column_lineitem_id = 'B'
+    self.column_lineitem_name = 'C'
+    self.column_lineitem_type = 'D'
+    self.column_campaign_id = 'E'
+    self.column_advertiser_id = 'F'
+    self.column_custom_bidding = 'K'
     self.debug = False
     self.clear_onoff = True
     self.gc = gspread.service_account(filename=auth_filename)
 
   def __str__(self) -> str:
-    """Override str method for this object to return a sensible string
-       showing the object's main properties.
-    Args:
-       None
-    Returns:
-       A formatted string containing the main object properties.
-    """
-    str_value =  f'SheetID:{self.sheet_id},\n'+\
-      f'sheet_service:{self.sheet_service},\n'+\
-      f'gc:{self.gc},'
-    
-    return str_value
+    return f'sheet_id:{self.sheet_id}\n' + \
+      f'sheet_url:{self.sheet_url}\n' + \
+      f'json_auth_file:{self.json_auth_file}\n' + \
+      f'sheets_service:{self.sheets_service}\n' + \
+      f'column_status:{self.column_status}\n' + \
+      f'column_lineitem_id:{self.column_lineitem_id}\n' + \
+      f'column_lineitem_name:{self.column_lineitem_name}\n' + \
+      f'column_lineitem_type:{self.column_lineitem_type}\n' + \
+      f'column_campaign_id:{self.column_campaign_id}\n' + \
+      f'column_advertising:{self.column_advertiser_id}\n' + \
+      f'column_custom_bidding:{self.column_custom_bidding}\n' + \
+      f'debug:{self.debug}\n' + \
+      f'clear_onoff:{self.clear_onoff}\n' + \
+      f'gc:{self.gc}'
+
+
+  def __getstate__(self):
+      state = self.__dict__.copy()  # Start with all attributes.
+      del state['gc']               # Remove the gc attribute.
+      del state['sheets_service']   # Remove the sheets_service attribute.
+      return state                  # Return the modified state dictionary.
+
 
   def set_name(self, name:str) -> None:
     self.sheet_id = name
@@ -112,7 +122,7 @@ class bid2x_spreadsheet():
       # Ask DV360 for a list of line items for this advertiser where
       # the campaignId = the value for this loop.
       # TODO: Known issue here when the number of line items exceeds
-      # the page size of LARGE_PAGE_SIZE (200).  
+      # the page size of LARGE_PAGE_SIZE (200).
       # The code should retrieve a page at a time until
       # all the line items are exhausted.
       request = service.advertisers().lineItems().list(
@@ -258,6 +268,16 @@ class bid2x_spreadsheet():
 
   def get_affected_line_items_from_sheet(self,
                                          zone_string: str) -> list[int]:
+    """Gets the data from a single tab within the linked spreadsheet
+    and returns all rows where the spreadsheet is marked 'Yes' to
+    generate the custom bidding script for that Line Item.
+    Args:
+      zone_string - a string corresponding to the label on a tab in the
+      Google sheet.
+
+    Returns:
+      A list of line items that need to be included in the custom bidding.
+    """
     # Get reference to already connected Sheets.
     spreadsheet_id = self.sheet_id
     # Open the spreadsheet tab name that is the passed zone string.
@@ -330,7 +350,18 @@ class bid2x_spreadsheet():
   def clear_sheet (self,
                    zone_string: str,
                    json_auth_file: str) -> bool:
+    """For the Google Sheet associated with this project, this function
+    clears the cells in the passed tab name between the column for
+    status and the column for advertiser ID and between the rows defined
+    as being the first data row and the last data row (typically this is row
+    2 to row 1000).
+    Args:
+      zone_string - a string corresponding to the label on a tab in the
+      Google sheet.
 
+    Returns:
+      True if able to complete the function successfully.
+    """
     # Get reference to already connected Sheets.
     spreadsheet_id = self.sheet_id
     try:
@@ -371,7 +402,7 @@ class bid2x_spreadsheet():
     clear_string = f'{self.column_status}'
     clear_string += f'{bid2x_var.SPREADSHEET_FIRST_DATA_ROW}'
     clear_string += ':'
-    clear_string += f'{self.column_advertiserid}'
+    clear_string += f'{self.column_advertiser_id}'
     clear_string += f'{bid2x_var.SPREADSHEET_LAST_DATA_ROW}'
 
     # Perform batch clear operation.
@@ -402,7 +433,7 @@ class bid2x_spreadsheet():
                               bid2x_var.SPREADSHEET_FIRST_DATA_ROW)
       try:
         current_tab.update(
-          values=onOff_Array, range_name=f'{self.column_custombidding}2')
+          values=onOff_Array, range_name=f'{self.column_custom_bidding}2')
       except gspread.exceptions.APIError as e:
         print(f'Error with gspread during update of ',
               f'range {self.__column_custombidding}',
@@ -419,7 +450,7 @@ class bid2x_spreadsheet():
         if is_recoverable_http_error(err.resp.status):
           time.sleep(bid2x_var.HTTP_RETRY_TIMEOUT)
           current_tab.update(
-            values=onOff_Array, range_name=f'{self.column_custombidding}2')
+            values=onOff_Array, range_name=f'{self.column_custom_bidding}2')
         else:
           raise
 
@@ -427,7 +458,7 @@ class bid2x_spreadsheet():
 
 
   def update_cb_scripts_tab(self,
-                            zone: bid2x_model,
+                            zone: Any,
                             cust_bidding_function_string: str,
                             test_run: bool)->bool:
     """This method updates the spreadsheet status tab (usually called
@@ -440,7 +471,7 @@ class bid2x_spreadsheet():
       cust_bidding_function_string: The string that was generated for the
                                     update or test.
       test_run: A Boolean indicating that the call is for a test when True.
-                Otherwise it is assumed that the call is being made in 
+                Otherwise it is assumed that the call is being made in
                 conjunction with an update to the actual script.
     Returns:
       True on successful completion of the function.
@@ -487,3 +518,31 @@ class bid2x_spreadsheet():
         raise # Reraises the exception.
 
     return True
+
+  def top_level_copy(self,source:Any)->None:
+    """This method makes a copy of top-level parameters within the source
+    dict to the current object.  The jsonpickle process, when loading a
+    configuration, returns a dict whose keys correspond to parameters
+    within this object.
+
+    Args:
+      source: a source dict with keys corresponding to parameters of this
+      object. Typically this dict comes from the 'unfreezing' of a
+      jsonpickle file.
+    Returns:
+      No return value
+    """
+    self.sheet_url = source['sheet_url']
+    self.sheet_id = source['sheet_id']
+
+    self.json_auth_file = source['json_auth_file']
+    self.column_status = source['column_status']
+    self.column_lineitem_id = source['column_lineitem_id']
+    self.column_lineitem_name = source['column_lineitem_name']
+    self.column_lineitem_type = source['column_lineitem_type']
+    self.column_campaign_id = source['column_campaign_id']
+    self.column_advertiser_id = source['column_advertiser_id']
+    self.column_custom_bidding = source['column_custom_bidding']
+    self.debug = source['debug']
+    self.clear_onoff = source['clear_onoff']
+

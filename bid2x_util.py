@@ -4,6 +4,8 @@ from http import HTTPStatus
 from typing import Any
 import time
 import bid2x_var
+import jsonpickle
+import gspread
 
 def google_dv_call(request: Any, context: str) -> dict:
 
@@ -39,6 +41,7 @@ def google_dv_call(request: Any, context: str) -> dict:
 
 # TODO: insert generic spreadsheet call routine here
 
+
 def is_recoverable_http_error(err: HTTPStatus) -> bool:
   if err in [HTTPStatus.FORBIDDEN,
              HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -61,3 +64,23 @@ def is_number(s) -> bool:
       return True
   except ValueError:
       return False
+
+def save_config(obj,filename_to_save: str)->bool:
+  frozen = jsonpickle.encode(obj,indent=2,unpicklable=False)
+
+  # Save the JSON string to a file
+  with open(filename_to_save, 'w') as f:
+      f.write(frozen)
+
+  return True
+
+def read_config(filename_to_load) -> Any:
+  # Load the JSON string from the file
+  with open(filename_to_load, 'r') as f:
+      frozen = f.read()
+
+  # Deserialize the object from the JSON string
+  loaded = jsonpickle.decode(frozen)
+
+
+  return loaded

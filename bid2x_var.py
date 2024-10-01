@@ -38,10 +38,12 @@ ATTR_MODEL_ID = 0
 
 ZONES_TO_PROCESS = "c1,c2,c3,c4,c5"
 
+INPUT_FILE = None
+
 # Define Spreadsheet-specific defaults.
 SPREADSHEET_KEY = 'abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr'
 SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/' + \
-                              SPREADSHEET_KEY + '/edit'
+  SPREADSHEET_KEY + '/edit'
 # These are the columns of the default setup in the spreadsheet.
 COLUMN_STATUS = 'A'
 COLUMN_LINEITEMID = 'B'
@@ -55,6 +57,12 @@ COLUMN_CUSTOMBIDDING = 'K'
 DEFAULT_CB_SCRIPT_COL_UPDATE = 2
 DEFAULT_CB_SCRIPT_COL_TEST = 4
 
+# Defaults for bid2x Model's within App Object.
+DEFAULT_MODEL_CAMPAIGN_ID = 10000000
+DEFAULT_MODEL_ALGORITHM_ID = 1000000
+DEFAULT_MODEL_SHEET_ROW = 1
+
+# API defaults for this solution.
 API_SCOPES = [
   'https://www.googleapis.com/auth/display-video',
   'https://www.googleapis.com/auth/spreadsheets']
@@ -76,21 +84,38 @@ BIDDING_FACTOR_LOW = 0.5
 
 
 def assign_vars_to_objects (app: bid2x_application) -> None:
-  app.trix = SPREADSHEET_URL
+  """This function copies values from the bid2x_var scope into their
+  proper places within the app object.  This function is needed to initialize
+  the app object with good values before a config file load or whenever the
+  app object is potentially in a state with unknown values.
+  Args:
+      app: a bid2x_application object - there is usually only one.
+  Returns:
+      None - this is a utility subroutine, not as much a function.
+  """
+  # Check if the 'sheet' property has been initialized and exists.
+  if hasattr(app,'sheet'):
+    app.sheet.sheet_id = SPREADSHEET_KEY
+    app.sheet.sheet_url = \
+      f'https://docs.google.com/spreadsheets/d/{SPREADSHEET_KEY}/edit'
+    app.sheet.debug = DEBUG
+
+  # DV360 connection-related properties
   app.scopes = API_SCOPES
   app.dv_api_name = API_NAME
   app.dv_api_version = API_VERSION
 
-  app.action_list_algos = ACTION_LIST_ALGOS
-  app.action_list_scripts = ACTION_LIST_SCRIPTS
-  app.action_create_algorithm = ACTION_CREATE_ALGORITHM
-  app.action_update_spreadsheet = ACTION_UPDATE_SPREADSHEET
-  app.action_remove_algorithm = ACTION_REMOVE_ALGORITHM
-  app.action_update_scripts = ACTION_UPDATE_SCRIPTS
-  app.action_test = ACTION_TEST
+  # Initialize action-related properties
+  app.action_list_algos = bool(ACTION_LIST_ALGOS)
+  app.action_list_scripts = bool(ACTION_LIST_SCRIPTS)
+  app.action_create_algorithm = bool(ACTION_CREATE_ALGORITHM)
+  app.action_update_spreadsheet = bool(ACTION_UPDATE_SPREADSHEET)
+  app.action_remove_algorithm = bool(ACTION_REMOVE_ALGORITHM)
+  app.action_update_scripts = bool(ACTION_UPDATE_SCRIPTS)
+  app.action_test = bool(ACTION_TEST)
 
+  # Initialize all the rest of the properties
   app.debug = DEBUG
-  app.sheet.debug = DEBUG
   app.clear_onoff = CLEAR_ONOFF
   app.sheet.clear_onoff = CLEAR_ONOFF
   app.defer_pattern = DEFER_PATTERN

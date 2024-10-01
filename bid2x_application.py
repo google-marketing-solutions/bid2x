@@ -13,12 +13,12 @@ from googleapiclient.errors import HttpError
 from http import HTTPStatus
 
 from bid2x_spreadsheet import bid2x_spreadsheet
-from bid2x_util import *
+
+import bid2x_util
 import bid2x_var
 
 class bid2x_application():
 
-  trix: str
   scopes: str
 
   dv_service = None
@@ -61,14 +61,12 @@ class bid2x_application():
   bidding_factor_low: int       # Min bidding factor.
 
   def __init__(self,
-               trix: str,
                scopes: str,
                dv_api_name: str,
                dv_api_version: str,
                sheet_id: str,
                auth_file: str):
 
-    self.trix = trix
     self.scopes = scopes
     self.dv_api_name = dv_api_name
     self.dv_api_version = dv_api_version
@@ -125,12 +123,10 @@ class bid2x_application():
     Returns:
        A formatted string containing a formatted list of object properties.
     """
-    return_str = f'trix: {self.trix}\n'+\
+    return_str = \
       f'dv_api_name: {self.dv_api_name}\n'+\
       f'dv_api_version: {self.dv_api_version}'+\
       f'scopes: {self.scopes}\n'+\
-      f'dv_api_name: {self.dv_api_name}\n'+\
-      f'dv_api_version: {self.dv_api_version}\n'+\
       f'dv_service: {self.dv_service}\n'+\
       f'action_list_algos: {self.action_list_algos}\n'+\
       f'action_list_scripts: {self.action_list_scripts}\n'+\
@@ -157,15 +153,27 @@ class bid2x_application():
       f'zones_to_process: {self.zones_to_process}\n'+\
       f'attr_model_id: {self.attr_model_id}\n'+\
       f'bidding_factor_high: {self.bidding_factor_high}\n'+\
-      f'bidding_factor_low: {self.bidding_factor_low}\n'
-    
+      f'bidding_factor_low: {self.bidding_factor_low}\n' +\
+      f'------------------------\n' +\
+      f'Sheet Object:{self.sheet}\n' +\
+      f'------------------------\n' +\
+      f'Zones:\n'
+
+    for zone in self.zone_array:
+      return_str += str(zone) + "\n----------------------\n"
+
     return return_str
 
-  def set_trix(self,str_trix: str) -> None:
-    self.trix = str_trix
+
+  def __getstate__(self):
+      state = self.__dict__.copy()  # Start with all attributes.
+      del state['dv_service']       # Remove the dv_service attribute.
+      return state                  # Return the modified state dictionary.
+
 
   def set_scopes (self,str_scopes: str) -> None:
     self.scopes = str_scopes
+
 
   def auth_dv(self, auth_file: str, auth_email_account: str) -> Any:
     """Top level function for auth'ing to DV360
@@ -185,7 +193,7 @@ class bid2x_application():
         self.dv_service = discovery.build(
           self.dv_api_name,
           self.dv_api_version,
-          http=dv_http_service) 
+          http=dv_http_service)
     else:
         print(f"Error authenticating using provided JSON information")
         return False
@@ -206,7 +214,7 @@ class bid2x_application():
       Returns http object
     """
 
-    """Performs OAuth2 for a DV360 service using 
+    """Performs OAuth2 for a DV360 service using
     service account credentials."""
 
     # Load the service account credentials from the specified JSON keyfile.
@@ -281,7 +289,7 @@ class bid2x_application():
     request = service.customBiddingAlgorithms().scripts().list(
       customBiddingAlgorithmId=f'{algorithm_id}',
       partnerId=f'{partner_id}')
-    response = google_dv_call(request,
+    response = bid2x_util.google_dv_call(request,
                               inspect.currentframe().f_code.co_name)
     return response
 
@@ -304,7 +312,7 @@ class bid2x_application():
     request = service.customBiddingAlgorithms().scripts().list(
       customBiddingAlgorithmId=f'{algorithm_id}',
       advertiserId=f'{advertiser_id}')
-    response = google_dv_call(request,
+    response = bid2x_util.google_dv_call(request,
                               inspect.currentframe().f_code.co_name)
     return response
 
@@ -323,7 +331,7 @@ class bid2x_application():
     """
     request = service.customBiddingAlgorithms().list(
       advertiserId=advertiser_id)
-    response = google_dv_call(request,
+    response = bid2x_util.google_dv_call(request,
                               inspect.currentframe().f_code.co_name)
     return response
 
@@ -342,7 +350,7 @@ class bid2x_application():
     """
     request = service.customBiddingAlgorithms().list(
       partnerId=partner_id)
-    response = google_dv_call(request,
+    response = bid2x_util.google_dv_call(request,
                               inspect.currentframe().f_code.co_name)
     return response
 
@@ -381,7 +389,7 @@ class bid2x_application():
     # Create the appropriate request object.
     request = service.customBiddingAlgorithms().create(
       body=custom_bidding_algorithm)
-    response = google_dv_call(request,
+    response = bid2x_util.google_dv_call(request,
                               inspect.currentframe().f_code.co_name)
     return response
 
@@ -417,7 +425,7 @@ class bid2x_application():
       "advertiserId": f'{advertiser_id}' }
     request = service.customBiddingAlgorithms().create(
       body=custom_bidding_algorithm)
-    response = google_dv_call(request,
+    response = bid2x_util.google_dv_call(request,
                               inspect.currentframe().f_code.co_name)
     return response
 
@@ -441,7 +449,7 @@ class bid2x_application():
       customBiddingAlgorithmId=f'{algorithm_id}',
       updateMask="entityStatus",
       body=entity_status)
-    response = google_dv_call(request,
+    response = bid2x_util.google_dv_call(request,
                               inspect.currentframe().f_code.co_name)
     return response
 
@@ -465,7 +473,7 @@ class bid2x_application():
       customBiddingAlgorithmId=f'{algorithm_id}',
       updateMask="entityStatus",
       body=entity_status)
-    response = google_dv_call(request,
+    response = bid2x_util.google_dv_call(request,
                               inspect.currentframe().f_code.co_name)
     return response
 
@@ -489,7 +497,7 @@ class bid2x_application():
     request = service.customBiddingAlgorithms().scripts().list(
       customBiddingAlgorithmId=f'{algorithm_id}',
       advertiserId=f'{advertiser_id}')
-    response = google_dv_call(request,
+    response = bid2x_util.google_dv_call(request,
                               inspect.currentframe().f_code.co_name + "_1")
     if self.debug:
       print(f'full response: {response}')
@@ -522,7 +530,7 @@ class bid2x_application():
       customBiddingAlgorithmId=f'{algorithm_id}',
       customBiddingScriptId=f'{latest_cb_upload_script_id}',
       advertiserId=f'{advertiser_id}')
-    response2 = google_dv_call(request2,
+    response2 = bid2x_util.google_dv_call(request2,
                                inspect.currentframe().f_code.co_name+"_2")
 
     # The previous response should return an associated 'resourceName'
@@ -540,7 +548,7 @@ class bid2x_application():
     # on the necessary URL parameter
     media_request.uri = media_request.uri.split("?")[0] + "?alt=media"
     # Make the call to DV360 to get the media
-    media_response = google_dv_call(media_request,
+    media_response = bid2x_util.google_dv_call(media_request,
                                     inspect.currentframe().f_code.co_name+"_3")
 
     return media_response
@@ -567,7 +575,7 @@ class bid2x_application():
       fp.write(script)
     except (IOError, OSError) as e:
       print(f'Error writing local file: {e}')
-    
+
     try:
       fp.close()
     except (FileNotFoundError, PermissionError, OSError) as e:
@@ -630,7 +638,7 @@ class bid2x_application():
       print(f'Error opening last update ',
             f'file {filename_with_path} for write: {e}')
       return False
-    
+
     try:
       fp.write(script)
     except (IOError, OSError) as e:
@@ -680,7 +688,7 @@ class bid2x_application():
     try:
       ref = self.sheet.gc.open_by_key(self.sheet.sheet_id).worksheet(
         zone_string)
-      list_of_dicts = ref.get_all_records()      
+      list_of_dicts = ref.get_all_records()
     except gspread.exceptions.SpreadsheetNotFound:
       print("Error: Spreadsheet not found while.")
     except gspread.exceptions.WorksheetNotFound:
@@ -692,7 +700,7 @@ class bid2x_application():
     except HttpError as err:
       # If the error is a rate limit or connection error,
       # wait and try again.
-      if is_recoverable_http_error(err.resp.status):
+      if bid2x_util.is_recoverable_http_error(err.resp.status):
         time.sleep(bid2x_var.HTTP_RETRY_TIMEOUT)
         ref = self.sheet.gc.open_by_key(self.sheet.sheet_id).worksheet(
           zone_string)
@@ -739,7 +747,7 @@ class bid2x_application():
         # low >= BIDDING_FACTOR_LO (default 0.5) and
         # high <= BIDDING_FACTOR_HIGH (default 1000).
 
-        if self.is_number(factor) and line_item_id:
+        if bid2x_util.is_number(factor) and line_item_id:
 
           # If the line item ID does not exist in our list of processed
           # line item IDs then add to the custom bidding function string
@@ -801,3 +809,48 @@ class bid2x_application():
       cust_bidding_function_string = 'return 0;'
 
     return cust_bidding_function_string
+
+  def top_level_copy(self,source:Any)->None:
+    self.scopes = source['scopes']
+    self.dv_api_name = source['dv_api_name']
+    self.dv_api_version = source['dv_api_version']
+
+    # Set defaults for action values.
+    self.action_list_algos = source['action_list_algos']
+    self.action_list_scripts = source['action_list_scripts']
+    self.action_create_algorithm = source['action_create_algorithm']
+    self.action_update_spreadsheet = source['action_update_spreadsheet']
+    self.action_remove_algorithm = source['action_remove_algorithm']
+    self.action_update_scripts = source['action_update_scripts']
+    self.action_test = source['action_test']
+
+    # Set defaults for other Booleans.
+    self.debug = source['debug']
+    self.clear_onoff = source['clear_onoff']
+    self.defer_pattern = source['defer_pattern']
+    self.alternate_algorithm = source['alternate_algorithm']
+
+    # Placeholder default value strings for initialization.
+    self.new_algo_name = source['new_algo_name']
+    self.new_algo_display_name = source['new_algo_display_name']
+    self.line_item_name_pattern = source['line_item_name_pattern']
+    self.cb_tmp_file_prefix = source['cb_tmp_file_prefix']
+    self.cb_last_update_file_prefix = source['cb_last_update_file_prefix']
+    self.service_account_email = source['service_account_email']
+
+    # Default values for some IDs set to 0 to be used as 'uninitialized'
+    # value.
+    self.partner_id = source['partner_id']
+    self.advertiser_id = source['advertiser_id']
+    self.cb_algo_id = source['cb_algo_id']
+
+    self.json_auth_file = source['json_auth_file']
+    self.floodlight_id_list = source['floodlight_id_list']
+
+    # Placeholder name of 'c1' for campaign 1 as zones typically
+    # map to campaign during use.
+    self.zones_to_process = source['zones_to_process']
+    self.attr_model_id = source['attr_model_id']
+
+    self.bidding_factor_high = source['bidding_factor_high']
+    self.bidding_factor_low = source['bidding_factor_low']

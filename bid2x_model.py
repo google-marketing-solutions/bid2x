@@ -21,13 +21,17 @@ class bid2x_model():
 
 
   def __init__(self, name: str, campaign_id: int, advertiser_id: int,
-               algorithm_id: int, debug: bool):
+               algorithm_id: int, debug: bool, update_row: int,
+               update_col:int, test_row:int, test_col:int):
     self.name = name
     self.campaign_id = campaign_id
     self.advertiser_id = advertiser_id
     self.algorithm_id = algorithm_id
-    self.cb_algorithm = ""  # Initially set to empty
+    self.cb_algorithm = ""  # Initially set to empty string.
     self.debug = debug
+    self.update_row = update_row
+    self.update_col = update_col
+    self.test_row = test_row
 
 
   def __str__(self)->str:
@@ -47,7 +51,7 @@ class bid2x_model():
       f'\tupdate_col:{self.update_col}\n'+\
       f'\ttest_row:{self.test_row}\n'+\
       f'\ttest_col:{self.test_col}\n'
-    
+
     return zone_str
 
 
@@ -56,11 +60,11 @@ class bid2x_model():
 
 
   def set_spreadsheet_row_col(self,
-                              update_row:int, 
+                              update_row:int,
                               update_col:int,
                               test_row:int,
                               test_col:int)->None:
-    """Setter function for row and col variables on update and 
+    """Setter function for row and col variables on update and
       on test.
     Args:
       update_row: The row number to use for an update string when the
