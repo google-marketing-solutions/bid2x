@@ -32,6 +32,7 @@ class bid2x_model():
     self.update_row = update_row
     self.update_col = update_col
     self.test_row = test_row
+    self.test_col = test_col
 
 
   def __str__(self)->str:

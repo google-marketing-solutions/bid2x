@@ -128,7 +128,7 @@ def main(argv):
     return False
 
   print('Start-up Configuration:')
-  print(json.dumps(app, indent=2))
+  print(app)
 
   # Is 'dv_service' (i.e. a conntection to DV360) valid?
   # If yes then proceed to process actions.
