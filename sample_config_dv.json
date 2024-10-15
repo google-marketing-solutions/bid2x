@@ -1,0 +1,78 @@
+{
+    "scopes": [
+      "https://www.googleapis.com/auth/display-video",
+      "https://www.googleapis.com/auth/spreadsheets"
+    ],
+    "api_name": "displayvideo",
+    "api_version": "v3",
+    "platform_type": "DV",
+    "sheet": {
+      "sheet_id": "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGH",
+      "sheet_url": "https://docs.google.com/spreadsheets/d/abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGH/edit",
+      "json_auth_file": "service_file.json",
+      "column_status": "A",
+      "column_lineitem_id": "B",
+      "column_lineitem_name": "C",
+      "column_lineitem_type": "D",
+      "column_campaign_id": "E",
+      "column_advertiser_id": "F",
+      "column_custom_bidding": "K",
+      "debug": false,
+      "clear_onoff": false
+    },
+    "zone_array": [
+      {
+        "name": "C1",
+        "campaign_id": 66666666,
+        "advertiser_id": 2222222,
+        "algorithm_id": 5555555,
+        "cb_algorithm": "",
+        "debug": true,
+        "update_row": 3,
+        "update_col": 2,
+        "test_row": 3,
+        "test_col": 4
+      },
+      {
+        "name": "C2",
+        "campaign_id": 11111111,
+        "advertiser_id": 2222222,
+        "algorithm_id": 3333333,
+        "cb_algorithm": "",
+        "debug": true,
+        "update_row": 4,
+        "update_col": 2,
+        "test_row": 4,
+        "test_col": 4
+      }
+    ],
+    "action_list_algos": false,
+    "action_list_scripts": false,
+    "action_create_algorithm": false,
+    "action_update_spreadsheet": false,
+    "action_remove_algorithm": false,
+    "action_update_scripts": false,
+    "action_test": true,
+    "debug": true,
+    "clear_onoff": false,
+    "defer_pattern": true,
+    "alternate_algorithm": false,
+    "new_algo_name": "bid2Inventory",
+    "new_algo_display_name": "bid2Inventory",
+    "line_item_name_pattern": "bid-to-inventory",
+    "json_auth_file": "service_file.json",
+    "cb_tmp_file_prefix": "/tmp/cb_script",
+    "cb_last_update_file_prefix": "last_upload",
+    "partner_id": 999999,
+    "advertiser_id": 8888888,
+    "cb_algo_id": 777777,
+    "service_account_email": "service_account@project_name.iam.gserviceaccount.com",
+    "zones_to_process": "c1,c2",
+    "floodlight_id_list": [
+      1111111,
+      2222222
+    ],
+    "attr_model_id": 0,
+    "bidding_factor_high": 1000,
+    "bidding_factor_low": 0
+  }

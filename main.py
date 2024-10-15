@@ -1,5 +1,5 @@
 """
-  BidToX for DV360
+  BidToX for SA360 (through GTM)/DV360
 
   Copyright 2024 Google Inc.
 
@@ -18,10 +18,14 @@
   Description:
   ------------
 
-  This Python application can be used to dynamically create DV360 Custom
-  Bidding Scipts.
+  This Python application can be used to dynamically create SA360(GTM)/DV360
+  Custom Bidding Scipts.
 
-  This application can also be used to list custom bidding algorithms,
+  The SA360 application uses Google Tag Manager custom variable templates as
+  scripts to modify bidding multipliers.  There is no direct interfacing
+  with SA360.
+
+  The DV360 application can also be used to list custom bidding algorithms,
   create new algorithms, delete custom bidding algorithms, and list custom
   bidding scripts through the use of the -a<X> arguments.
 
@@ -33,248 +37,144 @@
 """
 
 # Import required libraries & modules
-import json
 import base64
-import functions_framework
 import sys
 
 from datetime import datetime
-from datetime import datetime
 from dotenv import load_dotenv
+import gspread
+import functions_framework
 
-from bid2x_model import bid2x_model
-from bid2x_application import bid2x_application
+import bid2x_var
 from bid2x_env import process_environment_vars
 from bid2x_args import process_command_line_args
-
 from bid2x_util import read_config
-import bid2x_var
-import gspread
+from bid2x_model import bid2x_model
+from bid2x_application import bid2x_application
+
 
 # Triggered from a message on a Cloud Pub/Sub topic.
 # For a deployment on Cloud Functions in GCP this function is the entry point.
 @functions_framework.cloud_event
 def hello_pubsub(cloud_event) -> None:
-  """This function is the entry point for the code when trigged by a
-  GCP PubSub call.
-  Args:
-      cloud_event: a GCP event that is expected to contain data with either
-      'update_sheets' or 'upload_cb'.
-      When the data contains b'update_sheets' a known good config for updating
-      the Google Sheet is loaded from an .env file which loads environment
-      variables, those vars are copied to the bid2x_var scope using the
-      process_environment_vars() call and then assign_vars_to_objects()
-      is called to move those values into the app object.
-      When the data contains b'upload_cb' a known good config for uploading
-      custom bidding scripts is loaded from an .env file and the variables and
-      object readied.
-      Once ready the main() funciton is called to execute the action.
-  Returns:
-      None.
-  """
-  # Print out the data from Pub/Sub, to prove that it worked
-  message = base64.b64decode(cloud_event.data["message"]["data"])
-  print(f'Received pubsub message: {message}')
+    """This function is the entry point for the code when triggered by a
+    GCP PubSub call.
+    Args:
+        cloud_event: a GCP event that is expected to contain data with either
+        'update_sheets' or 'upload_cb'.  When the data contains b'update_sheets'
+        a known good config for updating the Google Sheet is loaded from an .env
+        file which loads environment variables, those vars are copied to the
+        bid2x_var scope using the process_environment_vars() call and then
+        assign_vars_to_objects() is called to move those values into the app
+        object.  When the data contains b'upload_cb' a known good config for
+        uploading custom bidding scripts is loaded from an .env file and the
+        variables and object readied. Once ready the main() function is called
+        to execute the action.
+    Returns:
+        None.
+    """
+    # Print out the data from Pub/Sub, to prove that it worked
+    message = base64.b64decode(cloud_event.data["message"]["data"])
+    print(f'Received pubsub message: {message}')
 
-  if message == b'update_sheets':
-    # Received pubsub message to update sheet - load environment
-    print("Received PubSub message to update_sheets - executing")
-    # When executed through GCP Cloud Functions use environment var
-    # files pre-loaded into GCP to set the context to run.  In this
-    # case the update_sheets message forces the loading of the
-    # update-sheet specific .env file.
-    load_dotenv('./<client>-update-sheet.env')
-    process_environment_vars()
+    if message == b'update_sheets':
+        # Received pubsub message to update sheet - load environment
+        print("Received PubSub message to update_sheets - executing")
+        # When executed through GCP Cloud Functions use environment var
+        # files pre-loaded into GCP to set the context to run.  In this
+        # case the update_sheets message forces the loading of the
+        # update-sheet specific .env file.
+        load_dotenv('./<client>-update-sheet.env')
+        process_environment_vars()
 
-  elif message == b'upload_cb':
-    # Received pubsub message to upload new scripts
-    print("Received PubSub message to upload new scripts - executing")
-    # When executed through GCP Cloud Functions use environment var
-    # files pre-loaded into GCP to set the context to run.  In this
-    # case the upload_cb message forces the loading of the
-    # upload specific .env file.
-    load_dotenv('./<client>-upload.env')
-    process_environment_vars()
+    elif message == b'upload_cb':
+        # Received pubsub message to upload new scripts
+        print("Received PubSub message to upload new scripts - executing")
+        # When executed through GCP Cloud Functions use environment var
+        # files pre-loaded into GCP to set the context to run.  In this
+        # case the upload_cb message forces the loading of the
+        # upload specific .env file.
+        load_dotenv('./<client>-upload.env')
+        process_environment_vars()
 
-  # Now that the environment variables have been used to set the scoped
-  # vars, assign these to the app.* objects.
-  bid2x_var.assign_vars_to_objects(app)
+    # Now that the environment variables have been used to set the scoped
+    # vars, assign these to the app.* objects.
+    bid2x_var.assign_vars_to_objects(app)
 
-  # Now run the main loop.
-  main(sys.argv)
+    # Now run the main loop.
+    main(sys.argv)
 
 
 def main(argv):
+    """
+        This is the main function of the script.
 
-  print(f"DV360 Custom Bidding script - Startup  {datetime.now()}")
+        It performs the following actions:
 
-  try:
-    bid2x_var.SPREADSHEET_URL
-  except NameError:
-    print("No args exist, preload a known good set")
-    load_dotenv('./sample-env-vars.env')
-    process_environment_vars()
+        1. Reads config from a file.
+        2. Does one of the following:
+            a) [Both DV360 and GTM] Creates the custom bidding script and saves
+                it to DV360/GTM.
+            b) [DV360-only] Lists all algorithms at an advertiser level.
+            c) [DV360-only] Lists all scripts at an advertiser level.
+            d) [DV360-only] Create new algorithm at partner level.
+            e) [DV360-only] Update reference spreadsheet.
+            f) [DV360-only] Remove algorithm.
+            g) [DV360-only] Update custom bidding script to reference sheet.
 
-  if not app.auth_dv_service(app.json_auth_file, app.service_account_email):
-    print(f'Failure on auth to DV')
-    return False
+        Example usage:
+            python main.py -i="dv_config.json"
+    """
+    print(f'Bid2X script - Startup  {datetime.now()}')
 
-  if not app.auth_sheets(app.json_auth_file, app.service_account_email):
-    print(f'Failure on auth to Sheets')
-    return False
+    try:
+        bid2x_var.SPREADSHEET_URL
+    except NameError:
+        print("No args exist, preload a known good set")
+        load_dotenv('./sample-env-vars.env')
+        process_environment_vars()
 
-  if not app.sheet.sheets_service:
-    print(f"Error authenticating sheets using provided JSON information")
-    return False
+    print(f'Platform Type: {app.platform_type}')
 
-  print('Start-up Configuration:')
-  print(app)
+    if app.platform_type == bid2x_var.PlatformType.GTM.value:
+        if not app.authenticate_service(app.json_auth_file,
+                                        app.service_account_email,
+                                        bid2x_var.PlatformType.GTM.value):
+            print('Failure on auth to GTM')
+            return False
 
-  # Is 'dv_service' (i.e. a conntection to DV360) valid?
-  # If yes then proceed to process actions.
-  if app.dv_service:
+    if app.platform_type == bid2x_var.PlatformType.DV.value:
+        if not app.authenticate_service(app.json_auth_file,
+                                        app.service_account_email,
+                                        bid2x_var.PlatformType.DV.value):
+            print('Failure on auth to DV')
+            return False
 
-    if app.action_list_scripts:
-      # Show advertiser level scripts for each initialized zone
-      for zone in app.zone_array:
-        print(f'Custom bidding scripts for zone {zone.name}',
-              f' advertiser_id = {zone.advertiser_id}')
-        response = app.list_advertiser_algo_scripts(app.dv_service,
-                                                    zone.advertiser_id)
-        json_pretty_print = json.dumps(response, indent=2)
-        print(f"{json_pretty_print}")
+    if not app.authenticate_service(app.json_auth_file,
+                                    app.service_account_email,
+                                    bid2x_var.PlatformType.SHEETS.value):
+        print('Failure on auth to Sheets')
+        return False
 
-    if app.action_list_algos:
-      # Show advertiser level algorithms for each initialized zone
-      print(f"Advertiser level algorithms for advertiser ID ",
-            f"= {app.advertiser_id}")
-      response = app.list_advertiser_algorithms(app.dv_service,
-                                                app.advertiser_id)
-      json_pretty_print = json.dumps(response, indent=2)
-      print(f"{json_pretty_print}")
+    print(f'Starting sheets_service check {app.sheet.sheets_service}')
+    if not app.sheet.sheets_service:
+        print('Error authenticating sheets using provided JSON information')
+        return False
 
-    if app.action_create_algorithm:
-      # Create a new custom bidding algorithm from Partner level.
-      print("Create new custom bidding algorithm for zone(s):")
+    print('Start-up Configuration:')
+    print(app)
 
-      for zone in app.zone_array:
-        # Create CB Algorithm at the Advertiser level.
-        algorithmName = app.new_algo_name + "_" + zone.name
-        displayName = app.new_algo_display_name + "_" + zone.name
-        print(f'New algorithm name: {displayName}')
-        response = app.create_cb_algorithm_advertiser(app.dv_service,
-                                                      app.advertiser_id,
-                                                      algorithmName,
-                                                      displayName)
-        if app.debug:
-          json_pretty_print = json.dumps(response, indent=2)
-          print(f"new custom bidding algorithm response = {json_pretty_print}")
+    # Is 'service' (i.e. a conntection to DV360) valid?
+    # If yes then proceed to process actions.
+    if app.service:
+        app.run_script()
 
-    if app.action_remove_algorithm:
-      # Remove an advertiser custom bidding algorithm by ID.
-      print(f'Custom bidding algorithm id {app.cb_algo_id} will ',
-            'attempted to be deleted.')
-      response = app.remove_cb_algorithm_advertiser(app.dv_service,
-                                                    app.advertiser_id,
-                                                    app.cb_algo_id)
+    else:
+        print('Unable to connect to service; no service - stopped')
+        return False
 
-      print(f'result of deletion attempt: {response}')
-
-    if app.action_update_scripts:
-      # Update the custom bidding scripts in DV360.
-
-      # Create custom bidding script for DV360 as a string - per sales zone.
-      for zone in app.zone_array:
-        # Go into Google Sheets and generate CB function per sales zone.
-        custom_bidding_function_string = \
-          app.generate_cb_script_max_of_conversion_counts(zone.name)
-
-        if app.debug:
-          # Show the generated custom bidding script.
-          print('custom_bidding_function_string:\n',
-                f'{custom_bidding_function_string}\n')
-
-        # Get a list of line items this will affect.
-        line_item_array = \
-          app.sheet.get_affected_line_items_from_sheet(zone.name)
-        # Get the current algorithm directly from DV360
-        custom_bidding_current_script = \
-          app.read_cb_algorithm_by_id(app.dv_service,
-                                      app.advertiser_id,
-                                      zone.algorithm_id)
-        if app.debug:
-          print(f'new c.b.script:***{custom_bidding_function_string}***')
-          print(f'current script:***{custom_bidding_current_script}***')
-        # Updating custom bidding scripts deals with Media objects - similar
-        # to the handling of creatives.  These are typically files on a local
-        # file system and it's easier to deal with the uploading of a custom
-        # bidding script by placing it in a temp file.
-        # Build the tmp filename using the custom budding (cb) tmp file prefix
-        # an underscore and then the zone name along with a '.txt' suffix.
-        # Once we check that the new CB script is actually new the contents
-        # of the script will be written to this filename.
-        filename = app.cb_tmp_file_prefix + "_" + zone.name + ".txt"
-        # Compare the new script and the previously uploaded script.
-        if str(custom_bidding_function_string).strip() == \
-          str(custom_bidding_current_script).strip():
-          # The new script is the same as the old script, don't write to file
-          # and don't upload.  Just return False from this function.
-          print('New script is the same as the existing script; not uploading')
-          return False
-        else:
-          print("New script is different from last ",
-                "uploaded script; uploading new version")
-          # Write new script to tmp filename.  Upload is from a tmp file.
-          app.write_last_upload_file(filename,custom_bidding_function_string)
-          # Make call to update script in DV360 passing in filename containing
-          # new script.
-          update_result = zone.update_custom_bidding_scripts(
-            app.dv_service,
-            zone.advertiser_id,
-            zone.algorithm_id,
-            filename,
-            line_item_array)
-
-          if not update_result:
-            print(f"Update of C.B. Script for zone {zone.name} failed.")
-          else:
-            print(f"Update of C.B. Script for zone {zone.name} succeeded.")
-            # Update of C.B. script was successful, update the Google
-            # Sheets spreadsheet tab named 'CB_Scripts'
-            app.sheet.update_cb_scripts_tab(zone,
-                                            custom_bidding_function_string,
-                                            test_run=False)
-
-    if app.action_test:
-
-      for zone in app.zone_array:
-        # Generate the Custom Bidding Script.
-        custom_bidding_string = \
-          app.generate_cb_script_max_of_conversion_counts(zone.name)
-        # Print the value of the script to the console - since this runs
-        # typically as a Cloud Function then this will end up in the logs.
-        print(f"""rules for zone {zone.name}:\n
-              {custom_bidding_string}""")
-
-        # Write the Test Run out to the test column in the associated
-        # Google Sheet in the tab 'CB_Scripts'
-        app.sheet.update_cb_scripts_tab(
-          zone,
-          custom_bidding_string,
-          test_run=True)
-
-    if app.action_update_spreadsheet:
-      app.sheet.read_dv_line_items (app.dv_service,
-                                    app.line_item_name_pattern,
-                                    app.zone_array,
-                                    app.defer_pattern)
-
-  else:
-    print(f'Unable to connect to DV360; no service - stopped')
-    return False
-
-  print(f"DV360 Custom Bidding script - Finished {datetime.now()}")
-  return True
+    print(f'Bid2X script - Finished {datetime.now()}')
+    return True
 
 # Walk sys.argv using argparse to process passed arguments.
 # The use of command line arguments is meant for development or for
@@ -298,89 +198,100 @@ process_command_line_args()
 # the steps in this if construct to create new objects and load the config
 # into them.
 if bid2x_var.INPUT_FILE:
-  # Start with default app object.
-  app = bid2x_application(
-    bid2x_var.API_SCOPES,
-    bid2x_var.API_NAME,
-    bid2x_var.API_VERSION,
-    bid2x_var.SPREADSHEET_KEY,
-    bid2x_var.JSON_AUTH_FILE)
-  # Then read input file into new object.
-  stored_app = read_config(bid2x_var.INPUT_FILE)
+    # Start with default app object.
+    print(f'Input file is: {bid2x_var.INPUT_FILE}')
+    app = bid2x_application(
+        bid2x_var.API_SCOPES,
+        bid2x_var.API_NAME,
+        bid2x_var.API_VERSION,
+        bid2x_var.SPREADSHEET_KEY,
+        bid2x_var.JSON_AUTH_FILE,
+        bid2x_var.PLATFORM_TYPE)
+    # Then read input file into new object.
+    stored_app = read_config(bid2x_var.INPUT_FILE)
 
-  # Update all values in app object with newly read values.
+    # Update all values in app object with newly read values.
 
-  # Copy 'sheet' sub-object items to app.
-  if 'sheet' in stored_app:
-    app.sheet.top_level_copy(stored_app['sheet'])
+    # Copy 'sheet' sub-object items to app.
+    if 'sheet' in stored_app:
+        app.platform_type = stored_app['platform_type']
+        app.sheet.top_level_copy(source=stored_app['sheet'], platform_type=app.platform_type)
 
-  if 'zone_array' in stored_app:
-    # Remove all previous zones first.
-    app.zone_array = []
+        if not app.platform_object:
+            app.start_service()
 
-    # Walk loaded zones and recreate with new model objects.
-    for zone in stored_app['zone_array']:
-      app.zone_array.append(
-        bid2x_model(zone['name'],
-                    zone['campaign_id'],
-                    zone['advertiser_id'],
-                    zone['algorithm_id'],
-                    zone['debug'],
-                    zone['update_row'],
-                    zone['update_col'],
-                    zone['test_row'],
-                    zone['test_col']))
+    if stored_app['platform_type'] == bid2x_var.PlatformType.DV.value and 'zone_array' in stored_app:
+        # Remove all previous zones first.
+        app.zone_array = []
 
-  # Finally, update main app with loaded values.
-  app.top_level_copy(stored_app)
+        # Walk loaded zones and recreate with new model objects.
+        for zone in stored_app['zone_array']:
+            app.platform_object.zone_array.append(
+                bid2x_model(zone['name'],
+                            zone['campaign_id'],
+                            zone['advertiser_id'],
+                            zone['algorithm_id'],
+                            zone['debug'],
+                            zone['update_row'],
+                            zone['update_col'],
+                            zone['test_row'],
+                            zone['test_col']))
+
+    # Finally, update main app with loaded values.
+    app.top_level_copy(stored_app)
 
     # Re-initialize dv_service (not saved in JSON).
-  if not app.auth_dv_service(app.json_auth_file, app.service_account_email):
-    print(f'Failure on auth to DV')
-  # Re-initialize sheets_service (not saved in JSON).
-  if not app.auth_sheets(app.json_auth_file, app.service_account_email):
-    print(f'Failure on auth to Sheets')
+    if app.platform_type == bid2x_var.PlatformType.DV.value and \
+          not app.auth.auth_dv_service(app.json_auth_file,
+                                      app.service_account_email):
+        print('Failure on auth to DV')
 
-  # Re-initialize gc (gspread) object (not saved in JSON)
-  app.sheet.gc = gspread.service_account(filename=app.sheet.json_auth_file)
+    # Re-initialize sheets_service (not saved in JSON).
+    if not app.auth.auth_sheets(app.sheet.json_auth_file,
+                                app.service_account_email):
+        print('Failure on auth to Sheets')
+
+    # Re-initialize gc (gspread) object (not saved in JSON)
+    app.sheet.gc = gspread.service_account(filename=app.sheet.json_auth_file)
 
 # This branch is used when NO input file is passed and we need to create
 # an app object with defaults.
 else:
-  # No config file passed, use the defaults.
-  app = bid2x_application(
-    bid2x_var.API_SCOPES,
-    bid2x_var.API_NAME,
-    bid2x_var.API_VERSION,
-    bid2x_var.SPREADSHEET_KEY,
-    bid2x_var.JSON_AUTH_FILE)
+    # No config file passed, use the defaults.
+    app = bid2x_application(
+        bid2x_var.API_SCOPES,
+        bid2x_var.API_NAME,
+        bid2x_var.API_VERSION,
+        bid2x_var.SPREADSHEET_KEY,
+        bid2x_var.JSON_AUTH_FILE,
+        bid2x_var.PLATFORM_TYPE)
 
-  app.zone_array = []
+    app.zone_array = []
 
-  if bid2x_var.ZONES_TO_PROCESS is None:
-    bid2x_var.ZONES_TO_PROCESS = 'c1,c2,c3,c4,c5'
-  zone_list = bid2x_var.ZONES_TO_PROCESS.split(",")
+    if bid2x_var.ZONES_TO_PROCESS is None:
+        bid2x_var.ZONES_TO_PROCESS = 'c1,c2,c3,c4,c5'
+    zone_list = bid2x_var.ZONES_TO_PROCESS.split(",")
 
-  # Populate the default app with the default number of zones / campaigns.
-  i=1
-  for zone in zone_list:
-    app.zone_array.append(
-      bid2x_model(f"Campaign_{zone}",                       # name
-                  bid2x_var.DEFAULT_MODEL_CAMPAIGN_ID+i,    # campaign id
-                  bid2x_var.ADVERTISER_ID,                  # advertiser id
-                  bid2x_var.DEFAULT_MODEL_ALGORITHM_ID+i,   # algorithm id
-                  bid2x_var.DEBUG,                          # debug flag
-                  bid2x_var.DEFAULT_MODEL_SHEET_ROW+1,      # sheet row update
-                  bid2x_var.DEFAULT_CB_SCRIPT_COL_UPDATE,   # sheet col update
-                  bid2x_var.DEFAULT_MODEL_SHEET_ROW+1,      # sheet row test,
-                  bid2x_var.DEFAULT_CB_SCRIPT_COL_TEST))    # sheet col test
-    i+=1
+    # Populate the default app with the default number of zones / campaigns.
+    i=1
+    for zone in zone_list:
+        app.zone_array.append(
+            bid2x_model(f"Campaign_{zone}",                       # name
+                        bid2x_var.DEFAULT_MODEL_CAMPAIGN_ID+i,    # campaign id
+                        bid2x_var.ADVERTISER_ID,                  # advertiser id
+                        bid2x_var.DEFAULT_MODEL_ALGORITHM_ID+i,   # algorithm id
+                        bid2x_var.DEBUG,                          # debug flag
+                        bid2x_var.DEFAULT_MODEL_SHEET_ROW+1,      # sheet row update
+                        bid2x_var.DEFAULT_CB_SCRIPT_COL_UPDATE,   # sheet col update
+                        bid2x_var.DEFAULT_MODEL_SHEET_ROW+1,      # sheet row test,
+                        bid2x_var.DEFAULT_CB_SCRIPT_COL_TEST))    # sheet col test
+        i+=1
 
-  # Take the global variables assigned through the command line arguments and
-  # copy them to app.* now that they have been created in the previous step.
-  bid2x_var.assign_vars_to_objects(app)
+    # Take the global variables assigned through the command line arguments and
+    # copy them to app.* now that they have been created in the previous step.
+    bid2x_var.assign_vars_to_objects(app)
 
 # If our entrypoint is main then run it.  The function hello_pubsub() is
 # the entry point when called through GCP Cloud Functions.
 if __name__ == '__main__':
-  main(sys.argv)
+    main(sys.argv)

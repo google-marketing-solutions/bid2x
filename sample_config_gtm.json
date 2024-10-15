@@ -1,0 +1,29 @@
+{
+    "scopes": [
+        "https://www.googleapis.com/auth/tagmanager.edit.containerversions",
+        "https://www.googleapis.com/auth/tagmanager.edit.containers",
+        "https://www.googleapis.com/auth/tagmanager.publish",
+        "https://www.googleapis.com/auth/tagmanager.readonly",
+        "https://www.googleapis.com/auth/tagmanager.delete.containers",
+        "https://www.googleapis.com/auth/spreadsheets"
+    ],
+    "api_name": "tagmanager",
+    "api_version": "v2",
+    "platform_type": "GTM",
+    "sheet": {
+      "sheet_id": "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGH",
+      "sheet_url": "https://docs.google.com/spreadsheets/d/abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGH/edit",
+      "json_auth_file": "gtm_auth_file.json",
+      "debug": true
+    },
+    "debug": true,
+    "json_auth_file": "gtm_auth_file.json",
+    "service_account_email": "service_account@project_name.iam.gserviceaccount.com",
+    "gtm_account_id": 999999,
+    "gtm_container_id": 8888888,
+    "gtm_workspace_id": 1,
+    "gtm_variable_id": 1,
+    "gtm_index_filename": "Test_bid2Load",
+    "gtm_index_tab": "index_file",
+    "gtm_value_adjustment_tab": "value_adjustment"
+  }
