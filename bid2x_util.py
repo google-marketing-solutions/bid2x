@@ -1,13 +1,51 @@
+<<<<<<< PATCH SET (39220e DV + GTM/SA including formatting for PyLinter)
+"""BidToX - bid2x_util application module.
+
+  Copyright 2025 Google Inc.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+
+  Description:
+  ------------
+
+  This module contains utility functions used by the Bid2X application.
+"""
+
+import http
+import time
+=======
 from googleapiclient.errors import HttpError
 from google.api_core.exceptions import GoogleAPICallError
 from http import HTTPStatus
+>>>>>>> BASE      (015c88 Extended code to modify bidding multiplier script for DV360 )
 from typing import Any
 import time
 import bid2x_var
 import jsonpickle
 import gspread
 
-def google_dv_call(request: Any, context: str) -> dict:
+import bid2x_var
+from google.api_core import exceptions
+from googleapiclient import errors
+import jsonpickle
+
+
+HttpError = errors.HttpError
+GoogleAPICallError = exceptions.GoogleAPICallError
+HTTPStatus = http.HTTPStatus
+
+
+def google_dv_call(request: Any, context: str) -> dict[Any]:
 
   """Make an API call to DV360 with detailed exception handling.
 
@@ -18,6 +56,8 @@ def google_dv_call(request: Any, context: str) -> dict:
   Returns:
     The response from the API call.
   """
+
+  response = None
 
   try:
     response = request.execute()
@@ -39,7 +79,7 @@ def google_dv_call(request: Any, context: str) -> dict:
 
   return response
 
-# TODO: insert generic spreadsheet call routine here
+# Insert generic spreadsheet call routine here when we remove gspread.
 
 
 def is_recoverable_http_error(err: HTTPStatus) -> bool:
@@ -51,8 +91,9 @@ def is_recoverable_http_error(err: HTTPStatus) -> bool:
     return False
 
 
-def is_number(s) -> bool:
-  """is the passed variable a number?
+def is_number(s: Any) -> bool:
+  """Is the passed variable a number?
+
   Args:
     s: any variable
   Returns:
@@ -60,27 +101,45 @@ def is_number(s) -> bool:
     a number
   """
   try:
-      float(s)
-      return True
+    float(s)
+    return True
   except ValueError:
-      return False
+    return False
 
-def save_config(obj,filename_to_save: str)->bool:
-  frozen = jsonpickle.encode(obj,indent=2,unpicklable=False)
+
+def save_config(obj: Any, filename_to_save: str) -> bool:
+  """Use jsonpickle to save a python object to a file.
+
+  Args:
+    obj: the object to save
+    filename_to_save: the name of the file to save to
+  Returns:
+    True if the save is successful, False otherwise.
+  """
+
+  frozen = jsonpickle.encode(obj, indent=2, unpicklable=False)
 
   # Save the JSON string to a file
   with open(filename_to_save, 'w') as f:
-      f.write(frozen)
+    f.write(frozen)
 
   return True
 
-def read_config(filename_to_load) -> Any:
+
+def read_config(filename_to_load: str) -> Any:
+  """Use jsonpickle to load a python object from a file.
+
+  Args:
+    filename_to_load: the name of the file to load from
+  Returns:
+    The object loaded from the file.
+  """
+
   # Load the JSON string from the file
   with open(filename_to_load, 'r') as f:
-      frozen = f.read()
+    frozen = f.read()
 
   # Deserialize the object from the JSON string
   loaded = jsonpickle.decode(frozen)
-
 
   return loaded

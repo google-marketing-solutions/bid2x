@@ -1,35 +1,50 @@
+"""BidToX - bid2x_var application module.
+
+  Copyright 2025 Google Inc.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+
+  Description:
+  ------------
+
+  This module provides default values for all bid2x variables.
 """
-This module provides default values for all bid2x variables.
 
-It includes function for:
+import enum
 
-- Assigning variables to objects
+Enum = enum.Enum
 
-"""
-from bid2x_application import bid2x_application
-from enum import Enum
 
 class PlatformType(Enum):
-    """Platforms used for custom scripting and referencing
-    such as the Google Sheet"""
-    GTM = 'GTM'
-    DV = 'DV'
-    SHEETS = 'SHEETS'
+  """Platforms used for custom scripting and referencing."""
+  GTM = 'GTM'
+  DV = 'DV'
+  SHEETS = 'SHEETS'
+
 
 class GTMColumns(Enum):
-    ORIGIN = 'LEG_SCHD_ORIG'
-    DESTINATION = 'LEG_SCHD_DEST'
-    SERVER_NAME = 'CMCL_SERV_NAME'
-    INDEX_FACTOR = 'INDEX_FACTOR'
-    INDEX_LOW = 'INDEX_LOW'
-    INDEX_HIGH = 'INDEX_HIGH'
-    VALUE_ADJUSTMENT = 'VALUE_ADJUSTMENT'
+  ORIGIN = 'LEG_SCHD_ORIG'
+  DESTINATION = 'LEG_SCHD_DEST'
+  SERVER_NAME = 'CMCL_SERV_NAME'
+  INDEX_FACTOR = 'INDEX_FACTOR'
+  INDEX_LOW = 'INDEX_LOW'
+  INDEX_HIGH = 'INDEX_HIGH'
+  VALUE_ADJUSTMENT = 'VALUE_ADJUSTMENT'
 
 
 # Defaults for bid2x.  Many will be replaced
-# with an deployment-specific values through
-# environment variable, command line arguments
-# or config file.
+# with deployment-specific values through
+# command line arguments or config file.
 
 # Overall application debug flag.
 # DEBUG = False
@@ -76,10 +91,10 @@ CB_LAST_UPDATE_FILE_PREFIX = 'last_upload'
 PARTNER_ID = 100000
 ADVERTISER_ID = 100000
 CB_ALGO_ID = 1000000
-FLOODLIGHT_ID_LIST = [1000001,1000002]
+FLOODLIGHT_ID_LIST = '1000001,1000002'
 ATTR_MODEL_ID = 0
 
-ZONES_TO_PROCESS = "c1,c2,c3,c4,c5"
+ZONES_TO_PROCESS = 'c1,c2,c3,c4,c5'
 
 INPUT_FILE = None
 
@@ -107,6 +122,23 @@ DEFAULT_MODEL_SHEET_ROW = 1
 
 # API defaults for this solution.
 API_SCOPES = [
+<<<<<<< PATCH SET (39220e DV + GTM/SA including formatting for PyLinter)
+    'https://www.googleapis.com/auth/display-video',
+    'https://www.googleapis.com/auth/spreadsheets',
+]
+API_NAME = 'displayvideo'
+API_VERSION = 'v3'
+
+# API_SCOPES = [
+#     'https://www.googleapis.com/auth/tagmanager.edit.containerversions',
+#     'https://www.googleapis.com/auth/tagmanager.edit.containers',
+#     'https://www.googleapis.com/auth/tagmanager.publish',
+#     'https://www.googleapis.com/auth/tagmanager.readonly',
+#     'https://www.googleapis.com/auth/tagmanager.delete.containers',
+#     'https://www.googleapis.com/auth/spreadsheets']
+# API_NAME = 'tagmanager'
+# API_VERSION = 'v2'
+=======
     'https://www.googleapis.com/auth/tagmanager.edit.containerversions',
     'https://www.googleapis.com/auth/tagmanager.edit.containers',
     'https://www.googleapis.com/auth/tagmanager.publish',
@@ -115,6 +147,7 @@ API_SCOPES = [
     'https://www.googleapis.com/auth/spreadsheets']
 API_NAME = 'tagmanager'
 API_VERSION = 'v2'
+>>>>>>> BASE      (015c88 Extended code to modify bidding multiplier script for DV360 )
 
 
 # Variables that have specific values that cannot be
@@ -129,6 +162,8 @@ SPREADSHEET_LAST_DATA_ROW = 1000
 # later on in the code.
 BIDDING_FACTOR_HIGH = 1000.0
 BIDDING_FACTOR_LOW = 0.5
+<<<<<<< PATCH SET (39220e DV + GTM/SA including formatting for PyLinter)
+=======
 
 
 def assign_vars_to_objects (app: bid2x_application) -> None:
@@ -196,3 +231,4 @@ def assign_vars_to_objects (app: bid2x_application) -> None:
       app.platform_object.attr_model_id = ATTR_MODEL_ID
       app.platform_object.bidding_factor_high = BIDDING_FACTOR_HIGH
       app.platform_object.bidding_factor_low = BIDDING_FACTOR_LOW
+>>>>>>> BASE      (015c88 Extended code to modify bidding multiplier script for DV360 )
