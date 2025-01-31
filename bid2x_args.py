@@ -32,10 +32,6 @@ ArgumentParser = argparse.ArgumentParser
 def process_command_line_args() -> None:
   """Performs the command line argument processing.
 
-  Args: None.
-
-  Returns:
-    None.
   """
   # Process arguments
   parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)

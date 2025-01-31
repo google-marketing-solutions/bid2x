@@ -468,37 +468,42 @@ class Bid2xGTM(Platform):
       True if process is a success.  False otherwise.
     """
 
-    # function code to import data from file and prepare it
+    # Read the index data from a spreadsheet into a Dataframe
     index_df = self.read_sheets_data()
-    self.print_dataframe(index_df)
 
-    js_function_string = self.write_javascript_function(index_df)
+    # print finailized DataFrame that was read in and processed
     if self.debug:
-      print(f'returned function: {js_function_string}')
+      self.printDataFrame(index_df)
+
+    # jsFunctionString = writeJavaScriptFunction(index_df)
+    js_function = self.write_javascript_function(index_df)
+
+    if self.debug:
+      print(f'generated js function returned: {js_function}')
 
     # if there's a good service and a good function update the GTM variable
-    if service and js_function_string:
+    if service and js_function:
       if self.debug:
         print(f'service: {service}')
-        print(f'ACCOUNT_ID: {self.account_id}')
-        print(f'CONTAINER_ID: {self.container_id}')
-        print(f'WORKSPACE_ID: {self.workspace_id}')
-        print(f'VARIABLE_ID: {self.variable_id}')
-        print(f'js_function_string: {js_function_string}')
+        print(f'account_id: {self.account_id}')
+        print(f'container_id: {self.container_id}')
+        print(f'workspace_id: {self.workspace_id}')
+        print(f'variable_id: {self.variable_id}')
+        print(f'js_function: {js_function}')
 
-      ret_val = self.update_gtm_variable(service, js_function_string)
+      ret_val = self.update_gtm_variable(
+          service,
+          js_function)
 
       if ret_val:
-        print(
-            'Success updating GTM variable to new value of:'
-            f'{chr(10)}{js_function_string}'
-        )
+        print(f'Success updating GTM variable to new value of:{chr(10)}',
+              f'{js_function}')
       else:
         print('Error updating GTM variable with function')
-        return -1
-
+        return False
     else:
-      print('No service to connect to')
+      print('No service to connect with.')
+      return False
 
     return True
 

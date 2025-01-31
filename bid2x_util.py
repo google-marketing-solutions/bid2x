@@ -1,4 +1,3 @@
-<<<<<<< PATCH SET (39220e DV + GTM/SA including formatting for PyLinter)
 """BidToX - bid2x_util application module.
 
   Copyright 2025 Google Inc.
@@ -23,16 +22,7 @@
 
 import http
 import time
-=======
-from googleapiclient.errors import HttpError
-from google.api_core.exceptions import GoogleAPICallError
-from http import HTTPStatus
->>>>>>> BASE      (015c88 Extended code to modify bidding multiplier script for DV360 )
 from typing import Any
-import time
-import bid2x_var
-import jsonpickle
-import gspread
 
 import bid2x_var
 from google.api_core import exceptions

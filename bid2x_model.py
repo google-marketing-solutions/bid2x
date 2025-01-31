@@ -236,7 +236,6 @@ class Bid2xModel():
     }
     # Create a line item object assigning the new bid strategy.
     line_item_obj = {'bidStrategy': bidding_strategy}
-<<<<<<< PATCH SET (39220e DV + GTM/SA including formatting for PyLinter)
 
     # Prep for bulk update.
 
@@ -265,21 +264,5 @@ class Bid2xModel():
         f' failures: {li_update_response["failedLineItemIds"]},',
         f' skipped:  {li_update_response["skippedLineItemIds"]}.',
     )
-=======
-    # Update the line item with a new bid strategy.
-    for li in line_item_array:
-      if self.debug:
-        print(f'Updating line item: {li}')
-      li_update_request = service.advertisers().lineItems().patch(
-        advertiserId=f'{advertiser_id}',
-        lineItemId=f'{li}',
-        updateMask='bidStrategy',
-        body=line_item_obj)
-      li_update_response = google_dv_call(li_update_request,
-                                          'create c.b. script for line item')
-      # Display the line item's new bid strategy.
-      print(f'Line Item {li_update_response["name"]} is now using the following'
-          f' bid strategy: {li_update_response["bidStrategy"]}.')
->>>>>>> BASE      (015c88 Extended code to modify bidding multiplier script for DV360 )
 
     return True

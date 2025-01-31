@@ -1,4 +1,3 @@
-<<<<<<< PATCH SET (39220e DV + GTM/SA including formatting for PyLinter)
 """BidToX - bid2x_platform application module.
 
   Copyright 2025 Google Inc.
@@ -24,11 +23,7 @@
 """
 
 import abc
-=======
-from abc import ABC, abstractmethod
->>>>>>> BASE      (015c88 Extended code to modify bidding multiplier script for DV360 )
 from typing import Any
-from pandas import DataFrame
 
 import pandas
 
@@ -54,7 +49,7 @@ class Platform(ABC):
     pass
 
   @abstractmethod
-  def process_script(self, service):
+  def process_script(self, service: Any):
     pass
 
   @abstractmethod
