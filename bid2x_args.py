@@ -49,7 +49,7 @@ def process_command_line_args() -> None:
       '--debug',
       default=bid2x_var.DEBUG,
       action='store_true',
-      help='Run script in debug mode ' + '(increases verbosity of output)',
+      help='Run script in debug mode ' + '(first level verbosity of output)',
   )
   parser.add_argument(
       '-c',
@@ -66,6 +66,13 @@ def process_command_line_args() -> None:
       action='store_true',
       help='When set to true DO NOT use LI name pattern to'
       + ' set rule on/off.  Default is False.',
+  )
+  parser.add_argument(
+      '-vv',
+      '--verbose',
+      default=bid2x_var.TRACE,
+      action='store_true',
+      help='Run script in trace mode ' + '(top level verbosity of output)',
   )
 
   # default value numeric arguments
@@ -243,6 +250,7 @@ def process_command_line_args() -> None:
 
   # Set debug flag from arguments
   bid2x_var.DEBUG = args['debug']
+  bid2x_var.TRACE = args['verbose']
 
   # Names
   bid2x_var.NEW_ALGO_NAME = args['algo_name']

@@ -133,3 +133,18 @@ def read_config(filename_to_load: str) -> Any:
   loaded = jsonpickle.decode(frozen)
 
   return loaded
+
+
+def copy_iff_exists(src: Any, key_as_str: str, dst: Any):
+  """If key exists in src copy to dst.
+
+  Args:
+    src: the source object.
+    key_as_str: the string name of the key.
+    dst: location to copy key value to.
+  Returns:
+    None
+  """
+
+  if key_as_str in src:
+    dst[key_as_str] = src[key_as_str]

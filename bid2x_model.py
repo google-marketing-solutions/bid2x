@@ -97,15 +97,15 @@ class Bid2xModel():
        A formatted string containing the main object properties.
     """
     zone_str = (
-        f'Zone Name:{self.name}\n'
-        f'\tAdvertiserID:{self.advertiser_id},\n'
-        f'\tCampaignID:{self.campaign_id},\n'
-        f'\tAlgorithmID:{self.algorithm_id}\n'
-        f'\tCBAlgorithm:{self.cb_algorithm}\n'
-        f'\tupdate_row:{self.update_row}\n'
-        f'\tupdate_col:{self.update_col}\n'
-        f'\ttest_row:{self.test_row}\n'
-        f'\ttest_col:{self.test_col}\n'
+        f'Zone Name: {self.name}\n'
+        f'\tadvertiser_id: {self.advertiser_id},\n'
+        f'\tcampaign_id: {self.campaign_id},\n'
+        f'\talgorithm_id: {self.algorithm_id}\n'
+        f'\tcb_algorithm: {self.cb_algorithm}\n'
+        f'\tupdate_row: {self.update_row}\n'
+        f'\tupdate_col: {self.update_col}\n'
+        f'\ttest_row: {self.test_row}\n'
+        f'\ttest_col: {self.test_col}\n'
     )
 
     return zone_str
@@ -237,7 +237,7 @@ class Bid2xModel():
     # Create a line item object assigning the new bid strategy.
     line_item_obj = {'bidStrategy': bidding_strategy}
 
-    # Prep for bulk update.
+    # Bulk update preparation.
 
     # Create a list of line item strings.
     str_list_of_li = list(map(str, line_item_array))
@@ -245,7 +245,7 @@ class Bid2xModel():
     # Format the body object.
     body_obj = {
         'lineItemIds': [str_list_of_li],
-        'targetLineItem': {line_item_obj},
+        'targetLineItem': line_item_obj,
         'updateMask': 'bidStrategy',
     }
 
@@ -258,11 +258,11 @@ class Bid2xModel():
     li_update_response = google_dv_call(
         li_update_request, 'bulk add line items to algorithm'
     )
-    # Display the line item's new bid strategy.
-    print(
-        f'Line Items updated: {li_update_response["updatedLineItemIds"]},',
-        f' failures: {li_update_response["failedLineItemIds"]},',
-        f' skipped:  {li_update_response["skippedLineItemIds"]}.',
-    )
+
+    if self.debug:
+      # Display the response from the line item bulk update.
+      print('Line Items update request: '
+            f'{li_update_response["updatedLineItemIds"]}'
+            )
 
     return True

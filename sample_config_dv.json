@@ -9,7 +9,7 @@
     "sheet": {
       "sheet_id": "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGH",
       "sheet_url": "https://docs.google.com/spreadsheets/d/abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGH/edit",
-      "json_auth_file": "service_file.json",
+      "json_auth_file": "client-secret.json",
       "column_status": "A",
       "column_lineitem_id": "B",
       "column_lineitem_name": "C",
@@ -46,6 +46,7 @@
         "test_col": 4
       }
     ],
+
     "action_list_algos": false,
     "action_list_scripts": false,
     "action_create_algorithm": false,
@@ -53,21 +54,23 @@
     "action_remove_algorithm": false,
     "action_update_scripts": false,
     "action_test": true,
+
     "debug": true,
+    "trace": false,
     "clear_onoff": false,
     "defer_pattern": true,
     "alternate_algorithm": false,
     "new_algo_name": "bid2Inventory",
     "new_algo_display_name": "bid2Inventory",
     "line_item_name_pattern": "bid-to-inventory",
-    "json_auth_file": "service_file.json",
+    "json_auth_file": "client-secret.json",
     "cb_tmp_file_prefix": "/tmp/cb_script",
     "cb_last_update_file_prefix": "last_upload",
     "partner_id": 999999,
     "advertiser_id": 8888888,
     "cb_algo_id": 777777,
     "service_account_email": "service_account@project_name.iam.gserviceaccount.com",
-    "zones_to_process": "c1,c2",
+    "zones_to_process": "C1,C2",
     "floodlight_id_list": [
       1111111,
       2222222

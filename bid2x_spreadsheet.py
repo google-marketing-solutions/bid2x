@@ -55,6 +55,7 @@ class Bid2xSpreadsheet():
           column_advertiser_id: The column name for the advertiser ID column.
           column_custom_bidding: The column name for the custom bidding column.
           debug: The debug flag.
+          trace: The trace flag.
           clear_onoff: The clear on/off flag.
           gc: The gspread object.
           COLUMN_OFFSET: The column offset.
@@ -93,6 +94,7 @@ class Bid2xSpreadsheet():
   column_advertiser_id: str
   column_custom_bidding: str
   debug: bool
+  trace: bool
   clear_onoff: bool
   gc: gspread
   COLUMN_OFFSET = 64          # Add to column # to get actual column letter.
@@ -112,6 +114,7 @@ class Bid2xSpreadsheet():
     self.column_advertiser_id = 'F'
     self.column_custom_bidding = 'K'
     self.debug = False
+    self.trace = False
     self.clear_onoff = True
     self.gc = gspread.service_account(filename=auth_filename)
 
@@ -125,26 +128,28 @@ class Bid2xSpreadsheet():
     """
 
     return_str = (
-        f'sheet_id:{self.sheet_id}\n'
-        f'sheet_url:{self.sheet_url}\n'
-        f'json_auth_file:{self.json_auth_file}\n'
-        f'sheets_service:{self.sheets_service}\n'
-        f'gc:{self.gc}\n'
-        f'debug:{self.debug}\n'
+        f'sheet_id: {self.sheet_id}\n'
+        f'sheet_url: {self.sheet_url}\n'
+        f'json_auth_file: {self.json_auth_file}\n'
+        f'gc (link to sheet): {self.gc}\n'
+        f'debug: {self.debug}\n'
+        f'trace: {self.trace}\n'
     )
 
     if self._platform_type == bid2x_var.PlatformType.DV.value:
       return_str = (
           return_str
-          + f'column_status:{self.column_status}\n'
-          f'column_lineitem_id:{self.column_lineitem_id}\n'
-          f'column_lineitem_name:{self.column_lineitem_name}\n'
-          f'column_lineitem_type:{self.column_lineitem_type}\n'
-          f'column_campaign_id:{self.column_campaign_id}\n'
-          f'column_advertising:{self.column_advertiser_id}\n'
+          + f'column_status: {self.column_status}\n'
+          f'column_lineitem_id: {self.column_lineitem_id}\n'
+          f'column_lineitem_name: {self.column_lineitem_name}\n'
+          f'column_lineitem_type: {self.column_lineitem_type}\n'
+          f'column_campaign_id: {self.column_campaign_id}\n'
+          f'column_advertising: {self.column_advertiser_id}\n'
           f'column_custom_bidding:{self.column_custom_bidding}\n'
-          f'clear_onoff:{self.clear_onoff}'
+          f'clear_onoff: {self.clear_onoff}'
       )
+    elif self._platform_type == bid2x_var.PlatformType.GTM.value:
+      return_str += 'GTM spreadsheet specifics'
 
     return return_str
 
@@ -696,13 +701,16 @@ class Bid2xSpreadsheet():
 
     return True
 
-  def update_cb_scripts_tab(self,
-                            zone: Any,
-                            cust_bidding_function_string: str,
-                            test_run: bool)->bool:
-    """Method to update CB_Scripts status tab.
+  def update_status_tab(self,
+                        status_tab_name: str,
+                        zone: Any,
+                        cust_bidding_function_string: str,
+                        test_run: bool)->bool:
+    """Method to update_status_tab.
 
     Args:
+      status_tab_name: The name of the Sheets tab on which to write the
+            status update.
       zone: A bid2x_model object containing (most importantly for this method)
             the rows and columns within the status tab to update.
       cust_bidding_function_string: The string that was generated for the
@@ -713,15 +721,15 @@ class Bid2xSpreadsheet():
     Returns:
       True on successful completion of the function.
     """
-    # Update CB_Scripts tab
+    # Update status tab.
     # Spreadsheet tab name should match key in dict.
 
     try:
       cbscripts_sheet = self.gc.open_by_key(self.sheet_id).worksheet(
-          'CB_Scripts'
+          status_tab_name
       )
     except gspread.exceptions.SpreadsheetNotFound:
-      print('Error: Spreadsheet not found for worksheet CB_Scripts.')
+      print(f'Error: Spreadsheet not found for worksheet {status_tab_name}')
       raise  # Reraises the exception.
     except gspread.exceptions.WorksheetNotFound as e:
       print(f'Error connecting to worksheet CB_Scripts: {e}')

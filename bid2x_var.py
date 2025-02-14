@@ -33,8 +33,9 @@ class PlatformType(Enum):
 
 
 class GTMColumns(Enum):
-  ORIGIN = 'LEG_SCHD_ORIG'
-  DESTINATION = 'LEG_SCHD_DEST'
+  GTM_VAR_1 = 'VARIABLE-ONE'
+  GTM_VAR_2 = 'VARIABLE-TWO'
+  GTM_NORMAL_TOTAL = 'Pixel-Transaction-TotalCAD'
   SERVER_NAME = 'CMCL_SERV_NAME'
   INDEX_FACTOR = 'INDEX_FACTOR'
   INDEX_LOW = 'INDEX_LOW'
@@ -47,22 +48,23 @@ class GTMColumns(Enum):
 # command line arguments or config file.
 
 # Overall application debug flag.
-# DEBUG = False
+TRACE = True
 DEBUG = True
 
 # Platform Type using Bid2X (GTM, DV360, Ads?)
-PLATFORM_TYPE = None
+PLATFORM_TYPE = 'DV'  # Default platform type is DV.
 JSON_AUTH_FILE = 'client-secret.json'
 SERVICE_ACCOUNT_EMAIL = 'gmp-bid-to-x@client-gcp.iam.gserviceaccount.com'
 
 # GTM variables
-GTM_ACCOUNT_ID = 99999999
-GTM_CONTAINER_ID = 888888888
-GTM_WORKSPACE_ID = 1
-GTM_VARIABLE_ID = 1
+GTM_ACCOUNT_ID = 90000000
+GTM_CONTAINER_ID = 800000000
+GTM_WORKSPACE_ID = 100
+GTM_VARIABLE_ID = 0
 GTM_INDEX_FILENAME = 'Test'
 GTM_INDEX_TAB = 'index_file'
 GTM_VALUE_ADJUSTMENT_TAB = 'value_adjustment'
+GTM_STATUS_TAB = 'JS_Scripts'
 
 # DV360 variables
 # Define action variable defaults.
@@ -86,7 +88,7 @@ JSON_AUTH_FILE = 'client-secret.json'
 CB_TMP_FILE_PREFIX = '/tmp/cb_script'
 CB_LAST_UPDATE_FILE_PREFIX = 'last_upload'
 SERVICE_ACCOUNT_EMAIL = 'bid-to-x@client-gcp.iam.gserviceaccount.com'
-
+DV_STATUS_TAB = 'CB_Scripts'
 
 PARTNER_ID = 100000
 ADVERTISER_ID = 100000
@@ -129,15 +131,15 @@ API_SCOPES = [
 API_NAME = 'displayvideo'
 API_VERSION = 'v3'
 
-# API_SCOPES = [
-#     'https://www.googleapis.com/auth/tagmanager.edit.containerversions',
-#     'https://www.googleapis.com/auth/tagmanager.edit.containers',
-#     'https://www.googleapis.com/auth/tagmanager.publish',
-#     'https://www.googleapis.com/auth/tagmanager.readonly',
-#     'https://www.googleapis.com/auth/tagmanager.delete.containers',
-#     'https://www.googleapis.com/auth/spreadsheets']
-# API_NAME = 'tagmanager'
-# API_VERSION = 'v2'
+GTM_API_SCOPES = [
+    'https://www.googleapis.com/auth/tagmanager.edit.containerversions',
+    'https://www.googleapis.com/auth/tagmanager.edit.containers',
+    'https://www.googleapis.com/auth/tagmanager.publish',
+    'https://www.googleapis.com/auth/tagmanager.readonly',
+    'https://www.googleapis.com/auth/tagmanager.delete.containers',
+    'https://www.googleapis.com/auth/spreadsheets']
+GTM_API_NAME = 'tagmanager'
+GTM_API_VERSION = 'v2'
 
 
 # Variables that have specific values that cannot be

@@ -56,6 +56,7 @@ class Bid2xApplication():
   _sheet_id: str
   zone_array = list[Any]
   debug: bool
+  trace: bool
   auth: None
 
   def __init__(self,
@@ -71,12 +72,15 @@ class Bid2xApplication():
     self.api_version = api_version
     self.service = None
     self.debug = False
+    self.trace = False
     self.platform_type = platform_type
+
     # Establish connection to Sheets
     self.sheet = Bid2xSpreadsheet(sheet_id, auth_file)
+    self.zone_array = []
 
     # Create product-specific auth object
-    self.auth = Bid2xAuth.Bid2xAuth(scopes, api_name, api_version)
+    self.auth = bid2x_auth.Bid2xAuth(scopes, api_name, api_version)
 
   def __str__(self)->str:
     """Override str method for this object to return a useful string.
@@ -87,19 +91,23 @@ class Bid2xApplication():
        A formatted string containing a formatted list of object properties.
     """
     return_str = (
-        f'api_name: {self.api_name}\n' +
-        f'api_version: {self.api_version}'+
-        f'service: {self.service}\n'+
-        f'scopes: {self.scopes}\n'+
-        f'debug: {self.debug}\n'+
-        '------------------------\n' +
-        f'Sheet Object:{self.sheet}\n' +
-        '------------------------\n' +
-        f'Auth Object:{self.auth}\n' +
-        '------------------------\n' +
+        f'api_name: {self.api_name}\n'
+        f'api_version: {self.api_version}'
+        f'service: {self.service}\n'
+        f'scopes: {self.scopes}\n'
+        f'debug: {self.debug}\n'
+        f'trace: {self.trace}\n'
+        f'sheet: {self.sheet}\n'
+        f'auth: {self.auth}\n'
+        '---------------\n'
+        'Platform Object\n'
+        '---------------\n'
+        f'object type: {self.platform_type}\n'
+        '---------------'
+        f'{self.platform_object}\n'
+        '---------------\n'
         'Zones:\n'
     )
-
     for zone in self.zone_array:
       return_str += str(zone) + '\n----------------------\n'
 
@@ -180,13 +188,12 @@ class Bid2xApplication():
     Returns:
       True if script runs successfully.  False if it doesn't.
     """
-    print(f'Platform Type {self.platform_type}')
+    if self.debug:
+      print(f'Platform Type {self.platform_type}')
+
     if self.platform_type == bid2x_var.PlatformType.GTM.value:
-      print(f'Looking at platform_object {self.platform_object}')
-      print(f'{dir(self.platform_object)}')
       self.platform_object.process_script(self.service)
     elif self.platform_type == bid2x_var.PlatformType.DV.value:
-      print(f'Looking at platform_object {self.platform_object}')
       self.platform_object.process_script(self.service)
     else:
       return False
@@ -209,9 +216,10 @@ class Bid2xApplication():
     self.service_account_email = source['service_account_email']
     self.json_auth_file = source['json_auth_file']
     self.debug = source['debug']
+    self.trace = source['trace']
 
-    print(f'{self.platform_type}, {self.platform_object}')
-
+    # Move to abstracted platform object and perform same copy of
+    # key properties from source to ensure object is complete.
     self.platform_object.top_level_copy(source)
 
   def assign_vars_to_objects(self) -> None:
@@ -232,6 +240,7 @@ class Bid2xApplication():
         f'/{bid2x_var.SPREADSHEET_KEY}/edit'
     )
     self.sheet.debug = bid2x_var.DEBUG
+    self.sheet.trace = bid2x_var.TRACE
 
     # Platform type for Bid2X instance
     self.platform_type = bid2x_var.PLATFORM_TYPE
@@ -242,18 +251,22 @@ class Bid2xApplication():
     self.api_version = bid2x_var.API_VERSION
 
     self.debug = bid2x_var.DEBUG
-    self.platform_object.debug = bid2x_var.DEBUG
+    # self.platform_object.debug = bid2x_var.DEBUG
     self.json_auth_file = bid2x_var.JSON_AUTH_FILE
     self.service_account_email = bid2x_var.SERVICE_ACCOUNT_EMAIL
 
-    if self.platform_type == enum.PlatformType.GTM:
+    if self.platform_type == bid2x_var.PlatformType.GTM:
       # GTM related properties
-      self.platform_object.gtm_account_id = bid2x_var.GTM_ACCOUNT_ID
-      self.platform_object.gtm_container_id = bid2x_var.GTM_CONTAINER_ID
-      self.platform_object.gtm_workspace_id = bid2x_var.GTM_WORKSPACE_ID
-      self.platform_object.gtm_variable_id = bid2x_var.GTM_VARIABLE_ID
+      # pylint: disable=pointless-statement
+      1
+      # pylint: enable=pointless-statement
+      # These are now zone-specific; need change here
+      # self.platform_object.gtm_account_id = bid2x_var.GTM_ACCOUNT_ID
+      # self.platform_object.gtm_container_id = bid2x_var.GTM_CONTAINER_ID
+      # self.platform_object.gtm_workspace_id = bid2x_var.GTM_WORKSPACE_ID
+      # self.platform_object.gtm_variable_id = bid2x_var.GTM_VARIABLE_ID
 
-    if self.platform_type == enum.PlatformType.DV:
+    if self.platform_type == bid2x_var.PlatformType.DV:
       # Initialize action-related properties
       self.platform_object.action_list_algos = bool(bid2x_var.ACTION_LIST_ALGOS)
       self.platform_object.action_list_scripts = bool(

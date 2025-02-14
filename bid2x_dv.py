@@ -59,6 +59,7 @@ class Bid2xDV(Platform):
         script.
     action_test(bool): Flag to create CB script and upload to sheets.
     debug(bool): Flag for debug mode.
+    trace(bool): Flag for trace mode.
     clear_onoff(bool): Clean up custom bidding flag in sheet.
     defer_pattern(bool): Update script creation flag in sheets.
     alternate_algorithm(bool): Alt algo flag for each floodlight.
@@ -174,7 +175,6 @@ class Bid2xDV(Platform):
         from config file to the object.
   """
   sheet: Bid2xSpreadsheet
-
   zone_array = list[Any]
 
   action_list_algos: bool
@@ -186,6 +186,7 @@ class Bid2xDV(Platform):
   action_test: bool
 
   debug: bool
+  trace: bool
   clear_onoff: bool             # Clean up custom bidding flag in sheet.
   defer_pattern: bool           # Update script creation flag in sheets.
   alternate_algorithm: bool     # Alt algo flag for each floodlight.
@@ -210,7 +211,6 @@ class Bid2xDV(Platform):
 
   def __init__(self, sheet: Bid2xSpreadsheet, debug: bool) -> None:
     self.sheet = sheet
-
     self.zone_array = []
 
     # Set defaults for action values.
@@ -223,6 +223,7 @@ class Bid2xDV(Platform):
     self.action_test = False
 
     self.debug = debug
+    self.trace = False
     self.clear_onoff = True
     self.defer_pattern = False
     self.alternate_algorithm = False
@@ -261,6 +262,8 @@ class Bid2xDV(Platform):
     """
 
     return_str = (
+        f'debug: {self.debug}\n'
+        f'trace: {self.trace}\n'
         f'action_list_algos: {self.action_list_algos}\n'
         f'action_list_scripts: {self.action_list_scripts}\n'
         f'action_create_algorithm: {self.action_create_algorithm}\n'
@@ -626,8 +629,10 @@ class Bid2xDV(Platform):
         request_read_single_cb_algo, context
     )
 
-    if self.debug:
-      print(f'full response: {response_read_single_cb_algo}')
+    if self.trace:
+      print('read cb algo by id full response: ',
+            f'{response_read_single_cb_algo}'
+           )
 
     # The default sort order of the output above is by createTime DESC.
     # Find the FIRST element whose state = 'ACCEPTED' as that is the most
@@ -653,7 +658,7 @@ class Bid2xDV(Platform):
     # latest_accepted_script
     latest_cb_upload_script_id = latest_accepted_script['customBiddingScriptId']
 
-    if self.debug:
+    if self.trace:
       print(f'customBiddingScriptId = {latest_cb_upload_script_id}')
 
     # Get details on the selected script ID
@@ -817,7 +822,7 @@ class Bid2xDV(Platform):
     Returns:
         None.
     """
-    if self.debug:
+    if self.trace:
       print(input_df.to_string())
 
   def generate_cb_script_max_of_conversion_counts(self,
@@ -944,7 +949,7 @@ class Bid2xDV(Platform):
     else:
       cust_bidding_function_string += '\nelse:\n  return 0'
 
-    if self.debug:
+    if self.trace:
       print(f'length of processedLineItems: {len(processed_line_items)}')
 
     if not processed_line_items:
@@ -1000,7 +1005,7 @@ class Bid2xDV(Platform):
             algorithm_name,
             display_name)
 
-        if self.debug:
+        if self.trace:
           json_pretty_print = json.dumps(response, indent=2)
           print('New custom bidding algorithm ',
                 f'response = {json_pretty_print}')
@@ -1026,7 +1031,7 @@ class Bid2xDV(Platform):
             self.generate_cb_script_max_of_conversion_counts(zone.name)
         )
 
-        if self.debug:
+        if self.trace:
           # Show the generated custom bidding script.
           print(
               'custom_bidding_function_string:\n',
@@ -1103,17 +1108,16 @@ class Bid2xDV(Platform):
         custom_bidding_string = (
             self.generate_cb_script_max_of_conversion_counts(zone.name)
         )
-        print(f'1/27 custom_bidding_string:\n{custom_bidding_string}\n')
 
         # Print the value of the script to the console.
-        if self.debug:
+        if self.trace:
           print(f"""rules for zone {zone.name}:\n
                 {custom_bidding_string}""")
 
         # Write the Test Run out to the test column in the associated
         # Google Sheet in the tab 'CB_Scripts'
-        self.sheet.update_cb_scripts_tab(
-            zone, custom_bidding_string, test_run=True
+        self.sheet.update_status_tab(
+            bid2x_var.DV_STATUS_TAB, zone, custom_bidding_string, test_run=True
         )
 
     if self.action_update_spreadsheet:
@@ -1137,6 +1141,7 @@ class Bid2xDV(Platform):
     """
 
     self.debug = source['debug']
+    self.trace = source['trace']
 
     # Set defaults for action values.
     self.action_list_algos = source['action_list_algos']

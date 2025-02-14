@@ -119,11 +119,6 @@ class Bid2xAuth:
         path_to_service_account_json_file, impersonation_email
     )
 
-    print(
-        f'bid2x_auth.auth_gtm_service - api_name:{self._api_name},',
-        f' api_version:{self._api_version}',
-    )
-
     # Build the GTM service object.
     if service_credentials:
       self._service = discovery.build(
