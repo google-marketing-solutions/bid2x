@@ -59,13 +59,10 @@ class Bid2xApplication():
   trace: bool
   auth: None
 
-  def __init__(self,
-               scopes: str,
-               api_name: str,
-               api_version: str,
-               sheet_id: str,
-               auth_file: str,
-               platform_type: str):
+  def __init__(
+      self, scopes: str, api_name: str, api_version: str, sheet_id: str,
+      auth_file: str, platform_type: str
+  ):
 
     self.scopes = scopes
     self.api_name = api_name
@@ -82,7 +79,7 @@ class Bid2xApplication():
     # Create product-specific auth object
     self.auth = bid2x_auth.Bid2xAuth(scopes, api_name, api_version)
 
-  def __str__(self)->str:
+  def __str__(self) -> str:
     """Override str method for this object to return a useful string.
 
     Args:
@@ -229,8 +226,9 @@ class Bid2xApplication():
     # Ensure that the 'sheet' property has been initialized and exists.
     if not hasattr(self, 'sheet'):
       # Sheet object not here - re-initing new one
-      self.sheet = Bid2xSpreadsheet(bid2x_var.SPREADSHEET_KEY,
-                                    bid2x_var.JSON_AUTH_FILE)
+      self.sheet = Bid2xSpreadsheet(
+          bid2x_var.SPREADSHEET_KEY, bid2x_var.JSON_AUTH_FILE
+      )
 
     # Sheet object exists for sure now ensure that sheet_id, sheet_url,
     # and debug settings are correct.
@@ -256,15 +254,21 @@ class Bid2xApplication():
     self.service_account_email = bid2x_var.SERVICE_ACCOUNT_EMAIL
 
     if self.platform_type == bid2x_var.PlatformType.GTM:
-      # GTM related properties
-      # pylint: disable=pointless-statement
-      1
-      # pylint: enable=pointless-statement
-      # These are now zone-specific; need change here
-      # self.platform_object.gtm_account_id = bid2x_var.GTM_ACCOUNT_ID
-      # self.platform_object.gtm_container_id = bid2x_var.GTM_CONTAINER_ID
-      # self.platform_object.gtm_workspace_id = bid2x_var.GTM_WORKSPACE_ID
-      # self.platform_object.gtm_variable_id = bid2x_var.GTM_VARIABLE_ID
+      # GTM related properties.
+      zone_index = 1
+      for zone in self.zone_array:
+        zone.name = f'Zone {zone_index}'
+        zone.account_id = bid2x_var.GTM_ACCOUNT_ID + zone_index
+        zone.container_id = bid2x_var.GTM_CONTAINER_ID + zone_index
+        zone.workspace_id = bid2x_var.GTM_WORKSPACE_ID + zone_index
+        zone.variable_id = bid2x_var.GTM_VARIABLE_ID + zone_index
+        zone.debug = bid2x_var.DEBUG
+        zone.trace = bid2x_var.TRACE
+        zone.update_row = zone_index + 1
+        zone.update_col = bid2x_var.DEFAULT_CB_SCRIPT_COL_UPDATE
+        zone.test_row = zone_index + 1
+        zone.test_col = bid2x_var.DEFAULT_CB_SCRIPT_COL_TEST
+        zone_index += 1
 
     if self.platform_type == bid2x_var.PlatformType.DV:
       # Initialize action-related properties

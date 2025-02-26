@@ -89,11 +89,9 @@ class Bid2xGTM(Platform):
 
   action_update_scripts: bool
   action_test: bool
-  zones_to_process: str          # Zones involved in the bidding script.
+  zones_to_process: str  # Zones involved in the bidding script.
 
-  def __init__(self,
-               sheet: Bid2xSpreadsheet,
-               debug: bool) -> None:
+  def __init__(self, sheet: Bid2xSpreadsheet, debug: bool) -> None:
     self.sheet = sheet
     self.zone_array = []
     self.index_filename = 'test_filename'
@@ -184,20 +182,17 @@ class Bid2xGTM(Platform):
     for i_index, i_row in df.iterrows():
       for row in values_df.iterrows():
         if (
-            i_row[self.index_factor_column_name]
-            <= row[1][self.index_high_column_name]
-            and i_row[self.index_factor_column_name]
-            > row[1][self.index_low_column_name]
+            i_row[self.index_factor_column_name
+                 ] <= row[1][self.index_high_column_name]
+            and i_row[self.index_factor_column_name
+                     ] > row[1][self.index_low_column_name]
         ):
 
           df.at[i_index, self.value_adjustment_column_name] = row[1][
-              self.value_adjustment_column_name
-          ]
+              self.value_adjustment_column_name]
 
     if self.trace:
-      print('Mapped dataframe:',
-            self.print_dataframe(df)
-            )
+      print('Mapped dataframe:', self.print_dataframe(df))
 
     return df
 
@@ -250,14 +245,17 @@ class Bid2xGTM(Platform):
     # Get all the values from the single value adjustments tab and convert
     # it into a Dataframe.
     value_adjustment_data = value_adjustment_tab.get_all_values()
-    value_adjustment_df = pd.DataFrame(value_adjustment_data[1:],
-                                       columns=value_adjustment_data[0])
+    value_adjustment_df = pd.DataFrame(
+        value_adjustment_data[1:], columns=value_adjustment_data[0]
+    )
 
     if self.trace:
       print(f'Index DataFrame as read in from tab {zone.name}:')
       self.print_dataframe(index_df)
-      print('Value Adjustment DataFrame as read in from ',
-            f'{self.value_adjustment_tab_name}:')
+      print(
+          'Value Adjustment DataFrame as read in from ',
+          f'{self.value_adjustment_tab_name}:'
+      )
       self.print_dataframe(value_adjustment_df)
 
     # expected file format (including header):
@@ -307,10 +305,10 @@ class Bid2xGTM(Platform):
     # starting with a blank string
     js_function_string_middle = ''
 
-    # Walk the passed dataframe a row at a time
-    for i, irow in input_df.iterrows():
-      # extract the origin, destination, and adjustment factor
-      # from the current row of the dataframe
+    # Walk the passed dataframe a row at a time.
+    for row_iter, irow in input_df.iterrows():
+      # Extract the origin, destination, and adjustment factor
+      # from the current row of the dataframe.
       if self.gtm_cond_var_1 in irow.keys().to_list():
         first_item = irow[self.gtm_cond_var_1]
       else:
@@ -325,8 +323,8 @@ class Bid2xGTM(Platform):
 
       # If this is the first clause (row 0) there is no 'else'
       # otherwise this is the continuation of an if-statement
-      # and use 'else ' to continue the statement
-      if i > 0:
+      # and use 'else ' to continue the statement.
+      if row_iter > 0:
         clause_prefix = 'else '
       else:
         clause_prefix = ''
@@ -350,7 +348,8 @@ class Bid2xGTM(Platform):
       js_function_string_middle += (
           '    adjusted_value = {{'
           f'{self.gtm_normal_total_var}'
-          '}} * ')
+          '}} * '
+      )
       js_function_string_middle += f'{adjustment}; '
       js_function_string_middle += '}\n'
 
@@ -359,16 +358,17 @@ class Bid2xGTM(Platform):
 
     # Assemble the JavaScript function
     js_function_string = (
-        js_function_string_start +
-        js_function_string_middle +
-        js_function_string_end)
+        js_function_string_start + js_function_string_middle
+        + js_function_string_end
+    )
 
     # Return the finalized JavaScript function for use in GTM
     return js_function_string
 
   # Update the variable using GTM API
-  def update_gtm_variable(self, service: Any, new_function: str,
-                          zone: Bid2xGTMModel) -> bool:
+  def update_gtm_variable(
+      self, service: Any, new_function: str, zone: Bid2xGTMModel
+  ) -> bool:
     """Update Google Tag Manager variable with new JavaScript function.
 
     Args:
@@ -401,11 +401,9 @@ class Bid2xGTM(Platform):
       print(f'prod_workspace_path: {prod_workspace_path}')
 
     gtm_new_workspace = (
-        service.accounts()
-        .containers()
-        .workspaces()
-        .create(parent=prod_workspace_path, body=gtm_new_workspace_body)
-        .execute()
+        service.accounts().containers().workspaces().create(
+            parent=prod_workspace_path, body=gtm_new_workspace_body
+        ).execute()
     )
 
     # return value of call to create new workspace gives new ids - use them:
@@ -428,12 +426,9 @@ class Bid2xGTM(Platform):
 
     # get the current value of the variable in GTM
     gtm_var = (
-        service.accounts()
-        .containers()
-        .workspaces()
-        .variables()
-        .get(path=var_req)
-        .execute()
+        service.accounts().containers().workspaces().variables().get(
+            path=var_req
+        ).execute()
     )
 
     if self.trace:
@@ -450,12 +445,9 @@ class Bid2xGTM(Platform):
     # Update GTM with the new version of gtm_var that has been updated
     # with the new JavaScript function
     gtm_updated = (
-        service.accounts()
-        .containers()
-        .workspaces()
-        .variables()
-        .update(path=var_req, body=gtm_var)
-        .execute()
+        service.accounts().containers().workspaces().variables().update(
+            path=var_req, body=gtm_var
+        ).execute()
     )
 
     if self.trace:
@@ -489,18 +481,15 @@ class Bid2xGTM(Platform):
 
     # Created versioned workspace
     gtm_versioned_workspace = (
-        service.accounts()
-        .containers()
-        .workspaces()
-        .create_version(path=gtm_path, body=gtm_versioned_workspace_body)
-        .execute()
+        service.accounts().containers().workspaces().create_version(
+            path=gtm_path, body=gtm_versioned_workspace_body
+        ).execute()
     )
 
     if gtm_versioned_workspace:
       # get version ID here and save to variable for use wuth publish
       version_id = gtm_versioned_workspace['containerVersion'][
-          'containerVersionId'
-      ]
+          'containerVersionId']
 
       if self.trace:
         print(f'gtm_versioned_workspace: {gtm_versioned_workspace}')
@@ -513,13 +502,9 @@ class Bid2xGTM(Platform):
         f'accounts/{account_id}/containers/{container_id}/versions/{version_id}'
     )
     gtm_published = (
-        service.accounts()
-        .containers()
-        .versions()
-        .publish(
+        service.accounts().containers().versions().publish(
             path=gtm_publish_path,
-        )
-        .execute()
+        ).execute()
     )
 
     # check return value of gtm_publish_path
@@ -532,9 +517,9 @@ class Bid2xGTM(Platform):
     return True
 
   # Starts the data reading and custom bidding process
-  def process_script(self,
-                     service: Any,
-                     zone_array: list[Bid2xGTMModel]) -> bool:
+  def process_script(
+      self, service: Any, zone_array: list[Bid2xGTMModel]
+  ) -> bool:
     """Orchestrates the variable change in GTM.
 
     Args:

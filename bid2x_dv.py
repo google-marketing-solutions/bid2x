@@ -187,27 +187,27 @@ class Bid2xDV(Platform):
 
   debug: bool
   trace: bool
-  clear_onoff: bool             # Clean up custom bidding flag in sheet.
-  defer_pattern: bool           # Update script creation flag in sheets.
-  alternate_algorithm: bool     # Alt algo flag for each floodlight.
+  clear_onoff: bool  # Clean up custom bidding flag in sheet.
+  defer_pattern: bool  # Update script creation flag in sheets.
+  alternate_algorithm: bool  # Alt algo flag for each floodlight.
 
-  new_algo_name: str            # Custom Bidding algo name.
-  new_algo_display_name: str    # Custom Bidding algo display name.
-  line_item_name_pattern: str   # Pattern in LI to pickup for algo.
+  new_algo_name: str  # Custom Bidding algo name.
+  new_algo_display_name: str  # Custom Bidding algo display name.
+  line_item_name_pattern: str  # Pattern in LI to pickup for algo.
 
-  cb_tmp_file_prefix: str          # Temp locatiom for CB script.
+  cb_tmp_file_prefix: str  # Temp locatiom for CB script.
   cb_last_update_file_prefix: str  # Prefix for last updated script.
 
-  partner_id: int              # Partner ID for the custom bidding script.
-  advertiser_id: int           # Advertiser ID for the custom bidding script.
-  cb_algo_id: int              # Algo ID of the custom bidding script.
-  service_account_email: str   # Cloud Service Account E-mail.
+  partner_id: int  # Partner ID for the custom bidding script.
+  advertiser_id: int  # Advertiser ID for the custom bidding script.
+  cb_algo_id: int  # Algo ID of the custom bidding script.
+  service_account_email: str  # Cloud Service Account E-mail.
 
-  zones_to_process: str          # Zones involved in the bidding script.
+  zones_to_process: str  # Zones involved in the bidding script.
   floodlight_id_list: list[str]  # List of Floodlight IDs involved in script.
-  attr_model_id: int             # Attribution Model ID for Floodlights.
-  bidding_factor_high: int       # Max bidding factor.
-  bidding_factor_low: int        # Min bidding factor.
+  attr_model_id: int  # Attribution Model ID for Floodlights.
+  bidding_factor_high: int  # Max bidding factor.
+  bidding_factor_low: int  # Min bidding factor.
 
   def __init__(self, sheet: Bid2xSpreadsheet, debug: bool) -> None:
     self.sheet = sheet
@@ -252,7 +252,7 @@ class Bid2xDV(Platform):
     self.bidding_factor_high = bid2x_var.BIDDING_FACTOR_HIGH
     self.bidding_factor_low = bid2x_var.BIDDING_FACTOR_LOW
 
-  def __str__(self)->str:
+  def __str__(self) -> str:
     """Override str method to return a sensible string.
 
     Args:
@@ -313,9 +313,7 @@ class Bid2xDV(Platform):
     """
 
     request_custom_bidding_scripts_partner = (
-        service.customBiddingAlgorithms()
-        .scripts()
-        .list(
+        service.customBiddingAlgorithms().scripts().list(
             customBiddingAlgorithmId=f'{algorithm_id}',
             partnerId=f'{partner_id}',
         )
@@ -347,9 +345,7 @@ class Bid2xDV(Platform):
     """
 
     request_custom_bidding_scripts_advertiser = (
-        service.customBiddingAlgorithms()
-        .scripts()
-        .list(
+        service.customBiddingAlgorithms().scripts().list(
             customBiddingAlgorithmId=f'{algorithm_id}',
             advertiserId=f'{advertiser_id}',
         )
@@ -364,9 +360,7 @@ class Bid2xDV(Platform):
     )
     return response_custom_bidding_scripts_advertiser
 
-  def list_advertiser_algorithms(
-      self, service: Any, advertiser_id: int
-  ) -> Any:
+  def list_advertiser_algorithms(self, service: Any, advertiser_id: int) -> Any:
     """List custom bidding algorithms associated with an advertiser ID.
 
     Args:
@@ -612,9 +606,7 @@ class Bid2xDV(Platform):
     # (each algorithm keeps a list of all the scripts it has used
     # including those that have been replaced with a newer script)
     request_read_single_cb_algo = (
-        service.customBiddingAlgorithms()
-        .scripts()
-        .list(
+        service.customBiddingAlgorithms().scripts().list(
             customBiddingAlgorithmId=f'{algorithm_id}',
             advertiserId=f'{advertiser_id}',
         )
@@ -630,9 +622,10 @@ class Bid2xDV(Platform):
     )
 
     if self.trace:
-      print('read cb algo by id full response: ',
-            f'{response_read_single_cb_algo}'
-           )
+      print(
+          'read cb algo by id full response: ',
+          f'{response_read_single_cb_algo}'
+      )
 
     # The default sort order of the output above is by createTime DESC.
     # Find the FIRST element whose state = 'ACCEPTED' as that is the most
@@ -663,9 +656,7 @@ class Bid2xDV(Platform):
 
     # Get details on the selected script ID
     request_cb_script_details = (
-        service.customBiddingAlgorithms()
-        .scripts()
-        .get(
+        service.customBiddingAlgorithms().scripts().get(
             customBiddingAlgorithmId=f'{algorithm_id}',
             customBiddingScriptId=f'{latest_cb_upload_script_id}',
             advertiserId=f'{advertiser_id}',
@@ -690,7 +681,8 @@ class Bid2xDV(Platform):
     # Make the media request to download the script file from
     # DV360 based on the media path we learned in the last step.
     request_media_file = service.media().download(
-        resourceName=f'{media_file_id}')
+        resourceName=f'{media_file_id}'
+    )
 
     # The default ending parameter of service requests is '?alt=json'
     # and for media requests this MUST be changed.  Make this happen
@@ -778,9 +770,9 @@ class Bid2xDV(Platform):
 
     return data
 
-  def write_last_upload_file(self,
-                             filename_with_path: str,
-                             script: str) -> bool:
+  def write_last_upload_file(
+      self, filename_with_path: str, script: str
+  ) -> bool:
     """This function writes the last uploaded file.
 
     Args:
@@ -794,8 +786,10 @@ class Bid2xDV(Platform):
     try:
       fp = open(filename_with_path, 'w')
     except (FileNotFoundError, PermissionError, OSError) as e:
-      print('Error opening last update ',
-            f'file {filename_with_path} for write: {e}')
+      print(
+          'Error opening last update ',
+          f'file {filename_with_path} for write: {e}'
+      )
       return False
 
     try:
@@ -812,8 +806,7 @@ class Bid2xDV(Platform):
 
     return True
 
-  def print_data_frame(self,
-                       input_df: DataFrame) -> None:
+  def print_data_frame(self, input_df: DataFrame) -> None:
     """Converts a dataframe to a string and prints it to stdout.
 
     Args:
@@ -825,8 +818,9 @@ class Bid2xDV(Platform):
     if self.trace:
       print(input_df.to_string())
 
-  def generate_cb_script_max_of_conversion_counts(self,
-                                                  zone_string: str) -> str:
+  def generate_cb_script_max_of_conversion_counts(
+      self, zone_string: str
+  ) -> str:
     """Generate a Custom Bidding script using max conversion counts.
 
     Args:
@@ -840,8 +834,8 @@ class Bid2xDV(Platform):
     list_of_dicts = []
 
     try:
-      ref = self.sheet.gc.open_by_key(self.sheet.sheet_id).worksheet(
-          zone_string)
+      ref = self.sheet.gc.open_by_key(self.sheet.sheet_id
+                                     ).worksheet(zone_string)
       list_of_dicts = ref.get_all_records()
     except gspread.exceptions.SpreadsheetNotFound:
       print('Error: Spreadsheet not found while.')
@@ -854,8 +848,10 @@ class Bid2xDV(Platform):
     except (ValueError, TypeError) as e:
       print(f'Error reading values from get_all_records(): {e}')
     except TimeoutError:
-      print('''Request timed out while opening spreadsheet.
-            Please check your network connection.''')
+      print(
+          '''Request timed out while opening spreadsheet.
+            Please check your network connection.'''
+      )
       raise  # Reraise the exception
 
     if not self.alternate_algorithm:
@@ -878,9 +874,8 @@ class Bid2xDV(Platform):
         # Calculate a 'valid' bidding factor value within the
         # bounds of high/low settings.
         verified_factor = min(
-            max(factor, self.bidding_factor_low),
-            self.bidding_factor_high
-            )
+            max(factor, self.bidding_factor_low), self.bidding_factor_high
+        )
 
         # Conduct checks on the retrieved values of factor and line_item_id
         # to ensure they are valid numbers.  The lineItemID must be an
@@ -902,11 +897,12 @@ class Bid2xDV(Platform):
                 cust_bidding_function_string += (
                     f'\n  ([total_conversion_count('
                     f'{floodlight_id_item},'
-                    f'{self.attr_model_id})>0, ')
+                    f'{self.attr_model_id})>0, '
+                )
                 cust_bidding_function_string += (
-                    f'line_item_id == {line_item_id}], ')
-                cust_bidding_function_string += (
-                    f'{verified_factor}),')
+                    f'line_item_id == {line_item_id}], '
+                )
+                cust_bidding_function_string += (f'{verified_factor}),')
             else:
               # Loop and create a separate if construct for each
               # floodlight in the list.
@@ -917,13 +913,15 @@ class Bid2xDV(Platform):
                   conditional_prefix = 'el'
 
                 cust_bidding_function_string += (
-                    f'\n{conditional_prefix}if line_item_id == ' +
-                    f'{line_item_id}:')
+                    f'\n{conditional_prefix}if line_item_id == '
+                    + f'{line_item_id}:'
+                )
                 cust_bidding_function_string += (
-                    '\n  return total_conversion_count')
+                    '\n  return total_conversion_count'
+                )
                 cust_bidding_function_string += (
-                    f'({floodlight_id_item},',
-                    f'{self.attr_model_id}) * ')
+                    f'({floodlight_id_item},', f'{self.attr_model_id}) * '
+                )
                 cust_bidding_function_string += f'{verified_factor}'
 
             # We have processed this line item id, add it to the
@@ -938,8 +936,12 @@ class Bid2xDV(Platform):
             '\n  ([total_conversion_count('
             f'{floodlight_id_item},{self.attr_model_id})>0], '
         )
+        value_for_custom_bidding_function = min(
+            max(bid2x_var.BIDDING_FACTOR_LOW, self.bidding_factor_low),
+            self.bidding_factor_high
+        )
         cust_bidding_function_string += (
-            f'{min(max(0.5, self.bidding_factor_low), self.bidding_factor_high)}),'
+            f'{value_for_custom_bidding_function}),'
         )
 
       # Remove final comma & insert close right square bracket and
@@ -970,23 +972,25 @@ class Bid2xDV(Platform):
     if self.action_list_scripts:
       # Show advertiser level scripts for each initialized zone
       for zone in self.zone_array:
-        print(f'Custom bidding scripts for zone {zone.name}',
-              f' advertiser_id = {zone.advertiser_id}')
+        print(
+            f'Custom bidding scripts for zone {zone.name}',
+            f' advertiser_id = {zone.advertiser_id}'
+        )
 
         response = self.list_advertiser_algo_scripts(
-            service,
-            zone.advertiser_id,
-            zone.algorithm_id)
+            service, zone.advertiser_id, zone.algorithm_id
+        )
 
         json_pretty_print = json.dumps(response, indent=2)
         print(f'{json_pretty_print}')
 
     if self.action_list_algos:
       # Show advertiser level algorithms for each initialized zone
-      print('Advertiser level algorithms for advertiser ID ',
-            f'= {self.advertiser_id}')
-      response = self.list_advertiser_algorithms(service,
-                                                 self.advertiser_id)
+      print(
+          'Advertiser level algorithms for advertiser ID ',
+          f'= {self.advertiser_id}'
+      )
+      response = self.list_advertiser_algorithms(service, self.advertiser_id)
       json_pretty_print = json.dumps(response, indent=2)
       print(f'{json_pretty_print}')
 
@@ -1000,24 +1004,24 @@ class Bid2xDV(Platform):
         display_name = self.new_algo_display_name + '_' + zone.name
         print(f'New algorithm name: {display_name}')
         response = self.create_cb_algorithm_advertiser(
-            service,
-            self.advertiser_id,
-            algorithm_name,
-            display_name)
+            service, self.advertiser_id, algorithm_name, display_name
+        )
 
         if self.trace:
           json_pretty_print = json.dumps(response, indent=2)
-          print('New custom bidding algorithm ',
-                f'response = {json_pretty_print}')
+          print(
+              'New custom bidding algorithm ', f'response = {json_pretty_print}'
+          )
 
     if self.action_remove_algorithm:
       # Remove an advertiser custom bidding algorithm by ID.
-      print(f'Custom bidding algorithm id {self.cb_algo_id} will ',
-            'attempted to be deleted.')
+      print(
+          f'Custom bidding algorithm id {self.cb_algo_id} will ',
+          'attempted to be deleted.'
+      )
       response = self.remove_cb_algorithm_advertiser(
-          service,
-          self.advertiser_id,
-          self.cb_algo_id)
+          service, self.advertiser_id, self.cb_algo_id
+      )
 
       print(f'result of deletion attempt: {response}')
 
@@ -1060,8 +1064,8 @@ class Bid2xDV(Platform):
 
         # Compare the new script and the previously uploaded script.
         if (
-            str(custom_bidding_function_string).strip()
-            == str(custom_bidding_current_script).strip()
+            str(custom_bidding_function_string).strip() ==
+            str(custom_bidding_current_script).strip()
         ):
 
           # The new script is the same as the old script, don't
@@ -1085,11 +1089,9 @@ class Bid2xDV(Platform):
           # Make call to update script in DV360 passing in filename containing
           # new script.
           update_result = zone.update_custom_bidding_scripts(
-              service,
-              zone.advertiser_id,
-              zone.algorithm_id,
-              filename,
-              line_item_array)
+              service, zone.advertiser_id, zone.algorithm_id, filename,
+              line_item_array
+          )
 
           if not update_result:
             print(f'Update of C.B. Script for zone {zone.name} failed.')
@@ -1111,8 +1113,10 @@ class Bid2xDV(Platform):
 
         # Print the value of the script to the console.
         if self.trace:
-          print(f"""rules for zone {zone.name}:\n
-                {custom_bidding_string}""")
+          print(
+              f"""rules for zone {zone.name}:\n
+                {custom_bidding_string}"""
+          )
 
         # Write the Test Run out to the test column in the associated
         # Google Sheet in the tab 'CB_Scripts'
