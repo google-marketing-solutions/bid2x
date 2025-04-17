@@ -61,6 +61,6 @@
     "index_low_column_name": "INDEX_LOW",
     "index_high_column_name": "INDEX_HIGH",
     "zones_to_process": "T1,T2",
-    "action_update_scripts": true,
+    "action_update_scripts": false,
     "action_test": false
   }

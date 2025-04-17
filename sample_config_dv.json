@@ -53,7 +53,7 @@
     "action_update_spreadsheet": false,
     "action_remove_algorithm": false,
     "action_update_scripts": false,
-    "action_test": true,
+    "action_test": false,
 
     "debug": true,
     "trace": false,
