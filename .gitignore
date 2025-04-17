@@ -1,0 +1,8 @@
+lib
+lib64
+etc
+include
+bin
+share
+pyvenv.cfg
+bid2x_installer.log*
