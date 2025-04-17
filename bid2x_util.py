@@ -24,14 +24,15 @@ import http
 import logging
 import time
 from typing import Any
+from urllib import parse
 
 import bid2x_var
 from google.api_core import exceptions
 from google.cloud import storage
 from googleapiclient import errors
 import jsonpickle
-import urlparse
 
+urlparse = parse.urlparse
 HttpError = errors.HttpError
 GoogleAPICallError = exceptions.GoogleAPICallError
 HTTPStatus = http.HTTPStatus

@@ -100,7 +100,7 @@ class Bid2xApplication():
         'Platform Object\n'
         '---------------\n'
         f'object type: {self.platform_type}\n'
-        '---------------'
+        '---------------\n'
         f'{self.platform_object}\n'
         '---------------\n'
         'Zones:\n'
