@@ -22,13 +22,21 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 # Copy the requirements file into the container at /app
 # Copying it separately allows Docker to cache the dependency installation
 #                                                                        layer
-COPY requirements.txt .
+# COPY requirements.txt .
+COPY base-tooling-requirements.txt .
 
 # Install any needed packages specified in requirements.txt
-# --no-cache-dir reduces image size, --system uses system Python (good
-#                                                       practice in containers)
+# --no-cache-dir reduces image size, --system uses system Python.
+
 # RUN pip install --no-cache-dir -r requirements.txt --system
-RUN pip install --no-cache-dir -r requirements.txt
+
+# Changed from requirements.txt to use the pip-compile generated file
+# base-tooling-requirements.txt to install from a file containing hashes as
+# per https://buganizer.corp.google.com/issues/411549534# .
+
+RUN pip install --require-hashes \
+    --no-cache-dir \
+    -r base-tooling-requirements.txt
 
 # Copy the rest of the application code into the container at /app
 COPY . .
