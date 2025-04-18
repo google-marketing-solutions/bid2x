@@ -53,9 +53,9 @@
 #   or do a 'gcloud auth login' to ensure your auth is current.
 
 # Service Account prep:
-#   You must have a service account created and ready for use BEFORE running this
-#   installation script because it is part of the core configuration (see
-#   SERVICE_ACCOUNT and INVOKER_SERVICE_ACCOUNT below).
+#   You must have a service account created and ready for use BEFORE running
+#   this installation script because it is part of the core configuration (see
+#   SERVICE_ACCOUNT and INVOKER_SERVICE_ACCOUNT variables below).
 
 # Installation Time Expectations:
 #   A full run of a 'DV' type installation with this script in the region
@@ -78,7 +78,7 @@
 # Set this to the GCP project name (not the ID) that you are deploying into.
 # If you're not sure what the current project is use the command
 # 'gcloud config get-value project'.
-PROJECT="bid2x-deploy-test8"
+PROJECT="bid2x-deploy-test"
 
 # Set this to the GCP region you are deploying in (NOT THE ZONE i.e. should
 # not end with 'a' or 'b' or whatever).
@@ -92,6 +92,10 @@ TIMEZONE="America/Toronto"
 
 # File that the most current installation log will be written to.
 LOG_FILE="bid2x_installer.log"
+
+# Cloud Storage config container unique name (do not include 'gs://'').
+# By default auto-generate 'project-name-config'.
+BUCKET_NAME="${PROJECT}-config"
 
 # Time allotted for Cloud Run Jobs to complete.
 TASK_TIMEOUT=60m
@@ -169,7 +173,7 @@ DAILY_CLOUD_RUN_JOB_NAME="bid2x-daily"
 # The default of "0 4 * * *" is a schedule for every day at 4:00am".
 DAILY_CRON_SCHEDULE="0 4 * * *"
 
-# This file should already exist and be readable.  Only checked if you're
+# This file should already exist and be readable. Only checked if you're
 # deploying a 'DV' type bid2x.
 DAILY_CONFIG="sample_config_dv.json"
 
@@ -202,6 +206,10 @@ GRANT_PERMISSIONS=1
 # Flag, 1 == Attempt to delete old components, 0 == don't run this section.
 DELETE_OLD_INSTALL=1
 
+# Create bucket (when necessary) and copy config file(s) to bucket.
+# Flag, 1 == Create bucket if necessary & copy files, 0 == don't run section.
+GCS_OPERATIONS=1
+
 # Flag, 1 == Deploy Cloud Run Jobs, 0 == don't run this section.
 DEPLOY_JOBS=1
 
@@ -212,22 +220,26 @@ CREATE_SCHEDULER_JOBS=1
 # Most users should not have to edit below this line
 # =============================================================================
 
-# Define log_message() convenience function
+# Keep some minimal state. Assume GCS portion not successful until it is.
+GCS_SUCCESSFUL=0
+
+# Define log_message() convenience function.
 
 # --- Configuration ---
 declare -ga LOG_SECTION_NUMBERS=()
-# Tracks the highest index accessed in LOG_SECTION_NUMBERS for resetting purposes
+# Tracks the highest index accessed in LOG_SECTION_NUMBERS.
+# for resetting purposes
 declare -gi LOG_MAX_LEVEL_REACHED=-1
-# Characters for separator lines at different indent levels (level 0, 1, 2, ...)
+# Characters for separator lines at indent levels (level 0, 1, 2,...).
 declare -ga LOG_SEPARATOR_CHARS=('=' '-' '*' '+' '#' '%' '&' '.')
-# Number of spaces per indentation level
+# Number of spaces per indentation level.
 declare -gi LOG_SPACES_PER_INDENT=4
 
 log_message() {
     # --- Parameters and Local Variables ---
     local level msg term_width indent_str \
           num_str sep_char separator_line i \
-          effective_level # Calculated level for array access
+          effective_level # Calculated level for array access.
 
     level="$1"
     msg="$2"
@@ -236,40 +248,40 @@ log_message() {
     if ! [[ "$level" =~ ^[0-9]+$ ]]; then
         echo "ERROR (log_message): Indent level '$level' must" \
           " be a non-negative integer." >&2
-        return 1 # Use return in functions, exit will stop the whole script
+        return 1 # Use return in functions, exit will stop the whole script.
     fi
      if [[ -z "$msg" ]]; then
         echo "ERROR (log_message): Message text cannot be empty." >&2
         return 1
     fi
 
-    # Ensure level is treated as a number for comparisons and array indexing
+    # Ensure level is treated as a number for comparisons and array indexing.
     effective_level=$((level))
 
     # --- Terminal Width Detection ---
-    # Try tput first, then COLUMNS env var, default to 80
+    # Try tput first, then COLUMNS env var, default to 80.
     if command -v tput >/dev/null && tput Co >/dev/null 2>&1; then
         term_width=$(tput cols)
     else
         term_width=${COLUMNS:-80}
     fi
-    # Sanity check term_width
+    # Sanity check term_width.
     [[ "$term_width" -lt 20 ]] && term_width=80
 
     # --- Numbering Logic ---
-    # Expand array if needed (when accessing a deeper level than ever before)
-    # This ensures parent levels exist in the array, initialized to 0 if new
+    # Expand array if needed (when accessing a deeper level than ever before).
+    # This ensures parent levels exist in the array, initialized to 0 if new.
     while [[ $effective_level -gt $LOG_MAX_LEVEL_REACHED ]]; do
          LOG_MAX_LEVEL_REACHED=$((LOG_MAX_LEVEL_REACHED + 1))
          LOG_SECTION_NUMBERS[LOG_MAX_LEVEL_REACHED]=0
     done
 
-    # Increment current level's number
+    # Increment current level's number.
     LOG_SECTION_NUMBERS[effective_level]=$(( \
       LOG_SECTION_NUMBERS[effective_level] + 1 ))
 
     # Reset number counts for all deeper levels (e.g. calling level 0
-    # resets level 1, 2...)
+    # resets level 1, 2...).
     for (( i = effective_level + 1; i <= LOG_MAX_LEVEL_REACHED; i++ )); do
          LOG_SECTION_NUMBERS[i]=0
     done
@@ -351,9 +363,9 @@ echo "Applying redirection: Logging AND displaying" \
   " stdout & stderr to ${LOG_FILE}."
 exec > >(tee -a "$LOG_FILE") 2> >(tee -a "$LOG_FILE" >&2)
 
-echo "*************************************************************************"
+echo "***********************************************************************"
 echo "bid2x installer - Starting - $(date '+%a %b %d, %Y - %I:%M:%S %p %Z')"
-echo "*************************************************************************"
+echo "***********************************************************************"
 
 # Set up the environment.
 if [[ ${SET_UP_ENVIRONMENT} -eq 1 ]]; then
@@ -471,6 +483,13 @@ if [[ ${GRANT_PERMISSIONS} -eq 1 ]]; then
       --role "roles/run.invoker"                            \
       "${QUIET}"
 
+  log_message 1 "Add Permissions for INVOKER to access GCS as Viewer"
+  # Grant permissions to service account to run the Cloud Run Job(s).
+  gcloud projects add-iam-policy-binding ${PROJECT}         \
+      --member "serviceAccount:${INVOKER_SERVICE_ACCOUNT}"  \
+      --role "roles/storage.objectViewer"                   \
+      "${QUIET}"
+
   echo "IAM permissioning completed."
 else
   echo "Skipping IAM permissions."
@@ -523,8 +542,93 @@ else
 fi
 
 
+
+if [[ ${GCS_OPERATIONS} -eq 1 ]]; then
+  log_message 0 "Create Cloud Storage Bucket"
+
+  echo "Checking if bucket gs://${BUCKET_NAME} exists..."
+  # Attempt to list the bucket.
+  # 'gcloud storage ls' exits with 0 if the bucket exists, non-zero otherwise.
+  # Redirect stdout and stderr to /dev/null to keep the script output clean.
+  if gcloud storage ls --project="${PROJECT}" \
+    "gs://${BUCKET_NAME}" >/dev/null 2>&1; then
+    echo "Bucket gs://${BUCKET_NAME} already exists. "
+    echo "No creation action needed."
+  else
+    echo "Bucket gs://${BUCKET_NAME} does not exist. Attempting to create..."
+    # Bucket does not exist, so create it.
+    # || exit ensures the script exits if the creation fails for any other
+    #   reason (permissions, etc.).
+    gcloud storage buckets create "gs://${BUCKET_NAME}" \
+      --project="${PROJECT}" \
+      --location="${REGION}" || exit 1
+    # Exit script if creation fails unexpectedly.
+
+    # Check if creation was successful.
+    if gcloud storage ls --project="${PROJECT}" \
+      "gs://${BUCKET_NAME}" >/dev/null 2>&1; then
+      echo "Bucket gs://${BUCKET_NAME} created successfully."
+    else
+      echo "ERROR: Failed to create bucket gs://${BUCKET_NAME}"
+      echo "or it's not accessible yet."
+      exit 1 # Exit with an error status.
+    fi
+  fi
+
+  GCS_DESTINATION_URI="gs://${BUCKET_NAME}/"
+
+  # Copy config file(s) to the bucket.
+  # --- Weekly Config File Copy to Bucket ---
+  if [[ -n "$WEEKLY_CONFIG" ]]; then
+    echo "Attempting to copy local file "
+    echo "'${WEEKLY_CONFIG}' to '${GCS_DESTINATION_URI}'..."
+    gcloud storage cp "${WEEKLY_CONFIG}" "${GCS_DESTINATION_URI}" \
+      --project="${PROJECT}" \
+      || { echo "ERROR: Failed to copy ${WEEKLY_CONFIG}"; exit 1; }
+    echo "Successfully copied '${WEEKLY_CONFIG}'."
+  else
+    echo "WEEKLY_CONFIG variable not defined. Skipping copy."
+  fi
+
+  if [[ ${DEPOLYMENT_TYPE} == 'DV' ]]; then
+    # --- Daily Config File Copy to Bucket ---
+    if [[ -n "$DAILY_CONFIG" ]]; then
+      echo "Attempting to copy local file "
+      echo "'${DAILY_CONFIG}' to '${GCS_DESTINATION_URI}'..."
+      gcloud storage cp "${DAILY_CONFIG}" "${GCS_DESTINATION_URI}" \
+        --project="${PROJECT}" \
+        || { echo "ERROR: Failed to copy ${DAILY_CONFIG}"; exit 1; }
+      echo "Successfully copied '${DAILY_CONFIG}'."
+    else
+      echo "DAILY_CONFIG variable not defined. Skipping copy."
+    fi
+
+  fi
+
+  # The GCS portion of the install ran successfully, set the
+  # flag so following sections are aware GCS is available.
+  GCS_SUCCESSFUL=1
+else
+  GCS_SUCCESSFUL=0
+fi
+
 if [[ ${DEPLOY_JOBS} -eq 1 ]]; then
   log_message 0 "Deploy Cloud Run Job(s)"
+
+  # Modify the passed args if we're using GCS to store them.
+  if [[ ${GCS_SUCCESSFUL} -eq 1 ]]; then
+    # If the GCS portion of the installer ran and was successful then
+    # modify the start-up args to tell the Cloud Run Job executable
+    # to load the config file(s) from the GCS bucket.
+    # If the GCS portion of the installer was NOT run then the
+    # original startup args will be used which loads the config file(s)
+    # from the local filesystem.
+    # When creating the container to run bid2x all files in the local
+    # directory are zip'd up and included so the config JSON files
+    # should be present to use.
+    WEEKLY_ARGS="-i,gs://${BUCKET_NAME}/${WEEKLY_CONFIG}"
+    DAILY_ARGS="-i,gs://${BUCKET_NAME}/${DAILY_CONFIG}"
+  fi
 
   # Deploy Cloud Run Job for Daily update.
   log_message 1 "Deploy Cloud Run Job for Weekly update"
@@ -534,7 +638,7 @@ if [[ ${DEPLOY_JOBS} -eq 1 ]]; then
     --max-retries 1                                     \
     --args="${WEEKLY_ARGS}"                             \
     --region "${REGION}"                                \
-    --service-account="${SERVICE_ACCOUNT}"              \
+    --service-account="${INVOKER_SERVICE_ACCOUNT}"      \
     --project="${PROJECT}"                              \
     --task-timeout="${TASK_TIMEOUT}"                    \
     --cpu="${CPU}"                                      \
@@ -550,7 +654,7 @@ if [[ ${DEPLOY_JOBS} -eq 1 ]]; then
       --max-retries 1                                    \
       --args="${DAILY_ARGS}"                             \
       --region "${REGION}"                               \
-      --service-account="${SERVICE_ACCOUNT}"             \
+      --service-account="${INVOKER_SERVICE_ACCOUNT}"     \
       --project="${PROJECT}"                             \
       --task-timeout="${TASK_TIMEOUT}"                   \
       --cpu="${CPU}"                                     \
@@ -565,7 +669,7 @@ fi
 
 
 if [[ ${CREATE_SCHEDULER_JOBS} -eq 1 ]]; then
-  # Construct the URI.
+  # Construct the invocation URI for weekly scheduled job.
   log_message 0 "Create Cloud Scheduler Job(s)"
 
   log_message 1 "Construct weekly invocation URI"
@@ -574,7 +678,6 @@ if [[ ${CREATE_SCHEDULER_JOBS} -eq 1 ]]; then
   WEEKLY_INVOCATION_URI="${BASE_URL}${INVOC_PATH}"
 
   echo "Weekly Invocation URI: ${WEEKLY_INVOCATION_URI}"
-
   log_message 1 "Create weekly cloud scheduler job"
 
   # Create the Weekly Cloud Scheduler job.
@@ -582,7 +685,7 @@ if [[ ${CREATE_SCHEDULER_JOBS} -eq 1 ]]; then
     --schedule="${WEEKLY_CRON_SCHEDULE}"                           \
     --uri="${WEEKLY_INVOCATION_URI}"                               \
     --http-method=POST                                             \
-    --oidc-service-account-email="${INVOKER_SERVICE_ACCOUNT}"      \
+    --oidc-service-account-email="${SERVICE_ACCOUNT}"              \
     --location="${REGION}"                                         \
     --time-zone="${TIMEZONE}"                                      \
     --project="${PROJECT}"                                         \
@@ -591,12 +694,12 @@ if [[ ${CREATE_SCHEDULER_JOBS} -eq 1 ]]; then
 
   if [[ ${DEPOLYMENT_TYPE} == 'DV' ]]; then
     log_message 1 "Construct daily invocation URI"
+    # Construct the invocation URI for the daily scheduled job if DV.
     BASE_URL="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1"
     INVOC_PATH="/namespaces/${PROJECT}/jobs/${DAILY_CLOUD_RUN_JOB_NAME}:run"
     DAILY_INVOCATION_URI="${BASE_URL}${INVOC_PATH}"
 
     echo "Daily Invocation URI: ${DAILY_INVOCATION_URI}"
-
     log_message 1 "Create daily cloud scheduler job"
 
     # Create the Daily Cloud Scheduler job.
@@ -604,7 +707,7 @@ if [[ ${CREATE_SCHEDULER_JOBS} -eq 1 ]]; then
       --schedule="${DAILY_CRON_SCHEDULE}"                           \
       --uri="${DAILY_INVOCATION_URI}"                               \
       --http-method=POST                                            \
-      --oidc-service-account-email="${INVOKER_SERVICE_ACCOUNT}"     \
+      --oidc-service-account-email="${SERVICE_ACCOUNT}"             \
       --location="${REGION}"                                        \
       --time-zone="${TIMEZONE}"                                     \
       --project="${PROJECT}"                                        \
@@ -618,8 +721,8 @@ else
   echo "Skipping Cloud Scheduler Jobs creation"
 fi
 
-echo "*************************************************************************"
+echo "***********************************************************************"
 echo "bid2x installer - Finished - $(date '+%a %b %d, %Y - %I:%M:%S %p %Z')"
-echo "*************************************************************************"
+echo "***********************************************************************"
 
 exit 0
