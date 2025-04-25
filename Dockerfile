@@ -16,8 +16,15 @@ RUN apt-get update && \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# copy pip-setup.txt to here
+COPY pip-setup.txt .
+
 # Upgrade pip and ensure setuptools and wheel are installed/updated
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+# RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+RUN pip install --require-hashes \
+    --no-cache-dir \
+    --upgrade \
+    -r pip-setup.txt
 
 # Copy the requirements file into the container at /app
 # Copying it separately allows Docker to cache the dependency installation
