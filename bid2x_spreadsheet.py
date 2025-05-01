@@ -386,6 +386,7 @@ class Bid2xSpreadsheet():
         # item (.name).
         try:
           current_tab = self.gc.open_by_key(spreadsheet_id).worksheet(zone.name)
+          break  # Success, exit retry loop.
         except gspread.exceptions.SpreadsheetNotFound:
           print(
               f'Error with gspread: Spreadsheet with ID '
@@ -449,6 +450,7 @@ class Bid2xSpreadsheet():
               values=line_items_data_for_sheet,
               range_name=f'{self.column_status}2'
           )
+          break  # Success, exit retry loop.
         except gspread.exceptions.APIError as e:
           print(
               'Error communicating with Google Sheets API while ',
@@ -622,6 +624,7 @@ class Bid2xSpreadsheet():
       # Get list of all records on the opened spreadsheet.
       try:
         list_of_dicts = current_tab.get_all_records()
+        break  # Success, exit retry loop.
       except gspread.exceptions.GSpreadException as e:
         print(
             'An unexpected gspread error occurred during ',
@@ -691,6 +694,7 @@ class Bid2xSpreadsheet():
       try:
         # Spreadsheet tab name is the name of the bid2Model iteam (.name).
         current_tab = self.gc.open_by_key(spreadsheet_id).worksheet(zone_string)
+        break  # Success, exit retry loop.
       except gspread.exceptions.SpreadsheetNotFound:
         print(
             'Error with gspread: Spreadsheet with ',
@@ -755,6 +759,7 @@ class Bid2xSpreadsheet():
       # Perform batch clear operation.
       try:
         current_tab.batch_clear([clear_string])
+        break  # Success, exit retry loop.
       except gspread.exceptions.APIError as e:
         print(
             'Error with gspread during batch_clear operation ',
@@ -802,6 +807,7 @@ class Bid2xSpreadsheet():
           current_tab.update(
               values=on_off_array, range_name=f'{self.column_custom_bidding}2'
           )
+          break  # Success, exit retry loop.
         except gspread.exceptions.APIError as e:
           print(
               'Error with gspread during update of ',
