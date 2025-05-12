@@ -54,6 +54,13 @@
     "gtm_index_tab": "index_file",
     "gtm_value_adjustment_tab_name": "value_adjustment",
     "gtm_normal_total_var": "theTotalInUSD",
+    "gtm_floodlight_list": [
+      "FloodlightName_1",
+      "FloodlightName_2"],
+    "gtm_normal_total_list": [
+      "TotalVarForFloodlight_1",
+      "TotalVarForFloodlight_2"
+    ],
     "gtm_cond_var_1": "Pixel-item-one",
     "gtm_cond_var_2": "Pixel-item-two",
     "value_adjustment_column_name": "VALUE_ADJUSTMENT",
