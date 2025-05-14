@@ -25,7 +25,6 @@
 
 from googleapiclient import http
 
-
 HttpRequest = http.HttpRequest
 MediaFileUpload = http.MediaFileUpload
 
@@ -73,7 +72,7 @@ class Bid2xGTMModel():
 
   """
 
-  # Attributes
+  # Set properties of this class.
   name: str
   account_id: int
   container_id: int
@@ -88,9 +87,11 @@ class Bid2xGTMModel():
   test_row: int
   test_col: int
 
-  def __init__(self, name: str, account_id: int, container_id: int,
-               workspace_id: int, variable_id: int, update_row: int,
-               update_col: int, test_row: int, test_col: int):
+  def __init__(
+      self, name: str, account_id: int, container_id: int, workspace_id: int,
+      variable_id: int, update_row: int, update_col: int, test_row: int,
+      test_col: int
+  ):
 
     self.name = name
     self.account_id = account_id
@@ -106,7 +107,7 @@ class Bid2xGTMModel():
     self.test_row = test_row
     self.test_col = test_col
 
-  def __str__(self)->str:
+  def __str__(self) -> str:
     """Override str method for this object to return a sensible string.
 
     Args:
@@ -131,11 +132,9 @@ class Bid2xGTMModel():
   def set_name(self, name: str) -> None:
     self.name = name
 
-  def set_spreadsheet_row_col(self,
-                              update_row: int,
-                              update_col: int,
-                              test_row: int,
-                              test_col: int)->None:
+  def set_spreadsheet_row_col(
+      self, update_row: int, update_col: int, test_row: int, test_col: int
+  ) -> None:
     """Setter function for row and col variables.
 
     Args:

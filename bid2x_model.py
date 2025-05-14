@@ -28,7 +28,6 @@ from typing import Any
 from bid2x_util import google_dv_call
 from googleapiclient import http
 
-
 HttpRequest = http.HttpRequest
 MediaFileUpload = http.MediaFileUpload
 
@@ -62,7 +61,7 @@ class Bid2xModel():
 
   """
 
-  # Attributes
+  # Set up properties of this class.
   name: str
   campaign_id: int
   advertiser_id: int
@@ -74,9 +73,11 @@ class Bid2xModel():
   test_row: int
   test_col: int
 
-  def __init__(self, name: str, campaign_id: int, advertiser_id: int,
-               algorithm_id: int, debug: bool, update_row: int,
-               update_col: int, test_row: int, test_col: int):
+  def __init__(
+      self, name: str, campaign_id: int, advertiser_id: int, algorithm_id: int,
+      debug: bool, update_row: int, update_col: int, test_row: int,
+      test_col: int
+  ):
     self.name = name
     self.campaign_id = campaign_id
     self.advertiser_id = advertiser_id
@@ -88,7 +89,7 @@ class Bid2xModel():
     self.test_row = test_row
     self.test_col = test_col
 
-  def __str__(self)->str:
+  def __str__(self) -> str:
     """Override str method for this object to return a sensible string.
 
     Args:
@@ -113,11 +114,9 @@ class Bid2xModel():
   def set_name(self, name: str) -> None:
     self.name = name
 
-  def set_spreadsheet_row_col(self,
-                              update_row: int,
-                              update_col: int,
-                              test_row: int,
-                              test_col: int)->None:
+  def set_spreadsheet_row_col(
+      self, update_row: int, update_col: int, test_row: int, test_col: int
+  ) -> None:
     """Setter function for row and col variables.
 
     Args:
@@ -140,12 +139,10 @@ class Bid2xModel():
   def set_cb_algorithm(self, str_algor: str) -> None:
     self.cb_algorithm = str_algor
 
-  def update_custom_bidding_scripts(self,
-                                    service: Any,
-                                    advertiser_id: int,
-                                    algorithm_id: int,
-                                    script_path: str,
-                                    line_item_array: list[int]) -> bool:
+  def update_custom_bidding_scripts(
+      self, service: Any, advertiser_id: int, algorithm_id: int,
+      script_path: str, line_item_array: list[int]
+  ) -> bool:
     """Upload a new script to an EXISTING custom bidding algorithm.
 
       First, a custom bidding script reference is created.  This is a
@@ -206,9 +203,7 @@ class Bid2xModel():
     script_obj = {'script': custom_bidding_script_ref}
     # Create the custom bidding script.
     create_cb_scrpt_request = (
-        service.customBiddingAlgorithms()
-        .scripts()
-        .create(
+        service.customBiddingAlgorithms().scripts().create(
             customBiddingAlgorithmId=f'{algorithm_id}',
             advertiserId=f'{advertiser_id}',
             body=script_obj,
@@ -250,9 +245,9 @@ class Bid2xModel():
     }
 
     li_update_request = (
-        service.advertisers()
-        .lineItems()
-        .bulkUpdate(advertiserId=f'{advertiser_id}', body=body_obj)
+        service.advertisers().lineItems().bulkUpdate(
+            advertiserId=f'{advertiser_id}', body=body_obj
+        )
     )
 
     li_update_response = google_dv_call(
@@ -261,8 +256,9 @@ class Bid2xModel():
 
     if self.debug:
       # Display the response from the line item bulk update.
-      print('Line Items update request: '
-            f'{li_update_response["updatedLineItemIds"]}'
-            )
+      print(
+          'Line Items update request: '
+          f'{li_update_response["updatedLineItemIds"]}'
+      )
 
     return True

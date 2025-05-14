@@ -98,7 +98,7 @@ class Bid2xSpreadsheet():
   clear_onoff: bool
   gc: gspread
   COLUMN_OFFSET = 64  # Add to column # to get actual column letter.
-  MAX_RETRIES = 5  # Number of retries when API calls fail
+  MAX_RETRIES = 5  # Number of retries when API calls fail.
 
   def __init__(self, sheet_id: str, auth_filename: str):
     self.sheet_id = sheet_id
@@ -562,31 +562,31 @@ class Bid2xSpreadsheet():
             'Error with gspread: Spreadsheet with ',
             f'ID {spreadsheet_id} not found.',
         )
-        raise  # Reraise the exception for higher-level handling
+        raise  # Reraise the exception for higher-level handling.
       except gspread.exceptions.WorksheetNotFound:
         print(
             f'Error with gspread: Worksheet "{zone_string}" not ',
             'found in the spreadsheet.',
         )
-        raise  # Reraise the exception
+        raise  # Reraise the exception.
       except gspread.exceptions.APIError as e:
         print(
             'Error with gspread while connecting to ',
             f'tab "{zone_string}": {e}',
         )
-        raise  # Reraise the exception
+        raise  # Reraise the exception.
       except TimeoutError:
         print(
             f'Request timed out while connecting to tab "{zone_string}". ',
             'Please check your network connection.',
         )
-        raise  # Reraise the exception
+        raise  # Reraise the exception.
       except gspread.exceptions.GSpreadException as e:
         print(
             'An unexpected gspread error occurred while ',
             f'connecting to tab "{zone_string}": {e}',
         )
-        raise  # Reraise the exception
+        raise  # Reraise the exception.
       except HttpError as err:
         # If the error is a rate limit or connection error,
         # wait and try again.
@@ -596,7 +596,7 @@ class Bid2xSpreadsheet():
           retry_count += 1
           delay *= 2
 
-          # If we get here, we've exceeded the maximum retries
+          # If we get here, we've exceeded the maximum retries.
           if retry_count == Bid2xSpreadsheet.MAX_RETRIES:
             print(
                 f'Failed to get all records after '
@@ -627,7 +627,7 @@ class Bid2xSpreadsheet():
             'An unexpected gspread error occurred during ',
             f'get_all_records() call: {e}'
         )
-        raise  # Reraise the exception for higher-level handling
+        raise  # Reraise the exception for higher-level handling.
       except ValueError as e:
         print(
             'Error with gspread during get_all_records() call. ',
@@ -643,7 +643,7 @@ class Bid2xSpreadsheet():
           retry_count += 1
           delay *= 2
 
-          # If we get here, we've exceeded the maximum retries
+          # If we get here, we've exceeded the maximum retries.
           if retry_count == Bid2xSpreadsheet.MAX_RETRIES:
             print(
                 f'Failed to get all records after '
@@ -730,7 +730,7 @@ class Bid2xSpreadsheet():
           retry_count += 1
           delay *= 2
 
-          # If we get here, we've exceeded the maximum retries
+          # If we get here, we've exceeded the maximum retries.
           if retry_count == Bid2xSpreadsheet.MAX_RETRIES:
             print(
                 'Failed to open worksheet after '
@@ -776,7 +776,7 @@ class Bid2xSpreadsheet():
           retry_count += 1
           delay *= 2
 
-          # If we get here, we've exceeded the maximum retries
+          # If we get here, we've exceeded the maximum retries.
           if retry_count == Bid2xSpreadsheet.MAX_RETRIES:
             print(
                 'Failed batch clear operation after '
@@ -825,7 +825,7 @@ class Bid2xSpreadsheet():
             retry_count += 1
             delay *= 2
 
-            # If we get here, we've exceeded the maximum retries
+            # If we get here, we've exceeded the maximum retries.
             if retry_count == Bid2xSpreadsheet.MAX_RETRIES:
               print(
                   'Failed batch clear operation after '
@@ -856,6 +856,7 @@ class Bid2xSpreadsheet():
     Returns:
       True on successful completion of the function.
     """
+
     # Update status tab.
     # Spreadsheet tab name should match key in dict.
 

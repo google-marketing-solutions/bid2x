@@ -351,7 +351,7 @@ class Bid2xDV(Platform):
         )
     )
     stack = inspect.stack()
-    if len(stack) > 1:  # Check if there's at least one frame beyond current
+    if len(stack) > 1:  # Check if there's at least one frame beyond current.
       context = stack[1].function
     else:
       context = None
@@ -375,7 +375,7 @@ class Bid2xDV(Platform):
         advertiserId=advertiser_id
     )
     stack = inspect.stack()
-    if len(stack) > 1:  # Check if there's at least one frame beyond current
+    if len(stack) > 1:  # Check if there's at least one frame beyond current.
       context = stack[1].function
     else:
       context = None
@@ -399,7 +399,7 @@ class Bid2xDV(Platform):
         partnerId=partner_id
     )
     stack = inspect.stack()
-    if len(stack) > 1:  # Check if there's at least one frame beyond current
+    if len(stack) > 1:  # Check if there's at least one frame beyond current.
       context = stack[1].function
     else:
       context = None
@@ -456,7 +456,7 @@ class Bid2xDV(Platform):
 
     # Make the call to DV360 and return the response.
     stack = inspect.stack()
-    if len(stack) > 1:  # Check if there's at least one frame beyond current
+    if len(stack) > 1:  # Check if there's at least one frame beyond current.
       context = stack[1].function
     else:
       context = None
@@ -485,6 +485,7 @@ class Bid2xDV(Platform):
         The DV360 response from creating the new custom bidding
         algorithm in JSON format.
     """
+
     # Create the Custom Bidding Model details object.
     custom_bidding_model_details = {
         'advertiserId': f'{advertiser_id}',
@@ -509,7 +510,7 @@ class Bid2xDV(Platform):
     )
 
     stack = inspect.stack()
-    if len(stack) > 1:  # Check if there's at least one frame beyond current
+    if len(stack) > 1:  # Check if there's at least one frame beyond current.
       context = stack[1].function
     else:
       context = None
@@ -533,6 +534,7 @@ class Bid2xDV(Platform):
         The DV360 response from deleting the custom bidding
         algorithm in JSON format.
     """
+
     entity_status = {
         'partnerId': f'{partner_id}',
         'entityStatus': 'ENTITY_STATUS_ARCHIVED',
@@ -569,6 +571,7 @@ class Bid2xDV(Platform):
         The DV360 response from deleting the custom bidding
         algorithm in JSON format.
     """
+
     entity_status = {
         'advertiserId': f'{advertiser_id}',
         'entityStatus': 'ENTITY_STATUS_ARCHIVED',
@@ -579,7 +582,7 @@ class Bid2xDV(Platform):
         body=entity_status,
     )
     stack = inspect.stack()
-    if len(stack) > 1:  # Check if there's at least one frame beyond current
+    if len(stack) > 1:  # Check if there's at least one frame beyond current.
       context = stack[1].function
     else:
       context = None
@@ -602,9 +605,10 @@ class Bid2xDV(Platform):
     Returns:
         The most recent script as a string from the algorithm ID.
     """
+
     # Get the list of scripts associated with the passed CB Algorithm
     # (each algorithm keeps a list of all the scripts it has used
-    # including those that have been replaced with a newer script)
+    # including those that have been replaced with a newer script).
     request_read_single_cb_algo = (
         service.customBiddingAlgorithms().scripts().list(
             customBiddingAlgorithmId=f'{algorithm_id}',
@@ -613,7 +617,7 @@ class Bid2xDV(Platform):
     )
 
     stack = inspect.stack()
-    if len(stack) > 1:  # Check if there's at least one frame beyond current
+    if len(stack) > 1:  # Check if there's at least one frame beyond current.
       context = stack[1].function + '_1'
     else:
       context = None
@@ -633,7 +637,7 @@ class Bid2xDV(Platform):
     if 'customBiddingScripts' in response_read_single_cb_algo:
       scripts = response_read_single_cb_algo['customBiddingScripts']
     else:
-      # no scripts found return empyty string
+      # No scripts found return empyty string.
       return ''
 
     latest_accepted_script = None
@@ -647,14 +651,14 @@ class Bid2xDV(Platform):
       print('No most recent algorithm')
       return ''
 
-    # At this point the script of interest is in the variable
-    # latest_accepted_script
+    # At this point the script of interest is in the variable.
+    # latest_accepted_script.
     latest_cb_upload_script_id = latest_accepted_script['customBiddingScriptId']
 
     if self.trace:
       print(f'customBiddingScriptId = {latest_cb_upload_script_id}')
 
-    # Get details on the selected script ID
+    # Get details on the selected script ID.
     request_cb_script_details = (
         service.customBiddingAlgorithms().scripts().get(
             customBiddingAlgorithmId=f'{algorithm_id}',
@@ -664,7 +668,7 @@ class Bid2xDV(Platform):
     )
 
     stack = inspect.stack()
-    if len(stack) > 1:  # Check if there's at least one frame beyond current
+    if len(stack) > 1:  # Check if there's at least one frame beyond current.
       context = stack[1].function + '_2'
     else:
       context = None
@@ -674,8 +678,8 @@ class Bid2xDV(Platform):
 
     # The previous response should return an associated 'resourceName'
     # that is the lookup path to the media object that is the actual
-    # algorithm script
-    # Get the fileID which is the resource name to request
+    # algorithm script.
+    # Get the fileID which is the resource name to request.
     media_file_id = response_cb_script_details['script']['resourceName']
 
     # Make the media request to download the script file from
@@ -712,6 +716,7 @@ class Bid2xDV(Platform):
     Returns:
         None.
     """
+
     # Write temporary file to tmp location.
     try:
       fp = open(filename_with_path, 'w')
@@ -742,6 +747,7 @@ class Bid2xDV(Platform):
     Returns:
         The contents of the file or an empty string if the file cannot be found.
     """
+
     # Set the default return value of empty string.
     data = ''
 
@@ -750,7 +756,7 @@ class Bid2xDV(Platform):
       fp = open(filename_with_path, 'r')
     except (FileNotFoundError, PermissionError, OSError) as e:
       print(f'Error opening last update file: {e}')
-      # Clear error is file is not found or error
+      # Clear error is file is not found or error.
       pass
       fp = None
 
@@ -782,6 +788,7 @@ class Bid2xDV(Platform):
     Returns:
         True on success, False otherwise.
     """
+
     # Try to open the file for write.
     try:
       fp = open(filename_with_path, 'w')
@@ -815,6 +822,7 @@ class Bid2xDV(Platform):
     Returns:
         None.
     """
+
     if self.trace:
       print(input_df.to_string())
 
@@ -831,6 +839,7 @@ class Bid2xDV(Platform):
     Returns:
         A fully formed custom bidding script suitable for upload to DV360.
     """
+
     list_of_dicts = []
 
     try:
@@ -852,7 +861,7 @@ class Bid2xDV(Platform):
           '''Request timed out while opening spreadsheet.
             Please check your network connection.'''
       )
-      raise  # Reraise the exception
+      raise  # Reraise the exception.
 
     if not self.alternate_algorithm:
       # If we are not using the alternate algorithm then we need to
@@ -1046,7 +1055,7 @@ class Bid2xDV(Platform):
         line_item_array = self.sheet.get_affected_line_items_from_sheet(
             zone.name
         )
-        # Get the current algorithm directly from DV360
+        # Get the current algorithm directly from DV360.
         custom_bidding_current_script = self.read_cb_algorithm_by_id(
             service, self.advertiser_id, zone.algorithm_id
         )
@@ -1119,7 +1128,7 @@ class Bid2xDV(Platform):
           )
 
         # Write the Test Run out to the test column in the associated
-        # Google Sheet in the tab 'CB_Scripts'
+        # Google Sheet in the tab 'CB_Scripts' (by default).
         self.sheet.update_status_tab(
             bid2x_var.DV_STATUS_TAB, zone, custom_bidding_string, test_run=True
         )

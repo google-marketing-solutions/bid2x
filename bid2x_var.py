@@ -59,7 +59,7 @@ PLATFORM_TYPE = 'DV'  # Default platform type is DV.
 JSON_AUTH_FILE = 'client-secret.json'
 SERVICE_ACCOUNT_EMAIL = 'gmp-bid-to-x@client-gcp.iam.gserviceaccount.com'
 
-# GTM variables
+# GTM variables.
 GTM_ACCOUNT_ID = 90000000
 GTM_CONTAINER_ID = 800000000
 GTM_WORKSPACE_ID = 100
@@ -69,7 +69,7 @@ GTM_INDEX_TAB = 'index_file'
 GTM_VALUE_ADJUSTMENT_TAB = 'value_adjustment'
 GTM_STATUS_TAB = 'JS_Scripts'
 
-# DV360 variables
+# DV360 variables.
 # Define action variable defaults.
 ACTION_LIST_ALGOS = False
 ACTION_LIST_SCRIPTS = False
@@ -146,7 +146,7 @@ GTM_API_NAME = 'tagmanager'
 GTM_API_VERSION = 'v2'
 
 # Variables that have specific values that cannot be
-# set through options
+# set through options.
 HTTP_RETRY_TIMEOUT = 5
 LARGE_PAGE_SIZE = 200
 SPREADSHEET_FIRST_DATA_ROW = 2
