@@ -36,6 +36,9 @@ class GTMColumns(Enum):
   GTM_VAR_1 = 'VARIABLE-ONE'
   GTM_VAR_2 = 'VARIABLE-TWO'
   GTM_NORMAL_TOTAL = 'Pixel-Transaction-TotalCAD'
+  GTM_NORMAL_TOTAL_LIST = []
+  GTM_FLOODLIGHT_LIST = []
+
   SERVER_NAME = 'CMCL_SERV_NAME'
   INDEX_FACTOR = 'INDEX_FACTOR'
   INDEX_LOW = 'INDEX_LOW'
@@ -137,10 +140,10 @@ GTM_API_SCOPES = [
     'https://www.googleapis.com/auth/tagmanager.publish',
     'https://www.googleapis.com/auth/tagmanager.readonly',
     'https://www.googleapis.com/auth/tagmanager.delete.containers',
-    'https://www.googleapis.com/auth/spreadsheets']
+    'https://www.googleapis.com/auth/spreadsheets'
+]
 GTM_API_NAME = 'tagmanager'
 GTM_API_VERSION = 'v2'
-
 
 # Variables that have specific values that cannot be
 # set through options
@@ -155,5 +158,3 @@ SPREADSHEET_LAST_DATA_ROW = 1000
 # later on in the code.
 BIDDING_FACTOR_HIGH = 1000.0
 BIDDING_FACTOR_LOW = 0.5
-
-
