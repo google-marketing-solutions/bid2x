@@ -453,7 +453,7 @@ class Bid2xGTM(Platform):
     )
 
     if gtm_versioned_workspace:
-      # Get version ID here and save to variable for use wuth publish.
+      # Get version ID here and save to variable for use with publish.
       version_id = gtm_versioned_workspace['containerVersion'][
           'containerVersionId']
 

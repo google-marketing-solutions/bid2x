@@ -66,7 +66,7 @@ class Platform(ABC):
     Returns:
         None.
     """
-    # make sure indexes pair with number of rows
+    # Make sure indexes pair with number of rows.
     df = input_df.reset_index()
 
     if debug:

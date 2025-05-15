@@ -71,9 +71,10 @@ def hello_pubsub(cloud_event: Any) -> None:
   Returns:
       None.
   """
+
   global app
 
-  # Extract the filename from the message data
+  # Extract the filename from the message data.
   message_data = cloud_event.data['message']['data']
   filename = base64.b64decode(message_data).decode('utf-8')
 
@@ -125,21 +126,20 @@ def main(argv: Any) -> int:
     app = create_objects_from_json_file('sample_config.json')
 
   if app.platform_type == bid2x_var.PlatformType.DV.value:
-    # This is a DV service
+    # This is a DV service.
     if not app.auth.auth_dv_service(
         app.json_auth_file, app.service_account_email
     ):
       print('Failure on auth to DV')
       return -1
   elif app.platform_type == bid2x_var.PlatformType.GTM.value:
-    # This is a GTM/SA service
+    # This is a GTM/SA service.
     if not app.auth.auth_gtm_service(
         app.json_auth_file, app.service_account_email
     ):
       print('Failure on auth to GTM')
       return -1
 
-  # if app.trace:
   if not app:
     print('App object not valid - exiting...')
     return -1
@@ -151,7 +151,7 @@ def main(argv: Any) -> int:
   if app.platform_type == bid2x_var.PlatformType.DV.value:
 
     if app.platform_object.action_list_scripts:
-      # Show advertiser level scripts for each initialized zone
+      # Show advertiser level scripts for each initialized zone.
       for zone in app.zone_array:
         response = app.platform_object.list_advertiser_algo_scripts(
             app.service, zone.advertiser_id
@@ -165,7 +165,7 @@ def main(argv: Any) -> int:
           print(f'{json_pretty_print}')
 
     if app.platform_object.action_list_algos:
-      # Show advertiser level algorithms for each initialized zone
+      # Show advertiser level algorithms for each initialized zone.
       response = app.platform_object.list_advertiser_algorithms(
           app.service, app.platform_object.advertiser_id
       )
@@ -234,7 +234,7 @@ def main(argv: Any) -> int:
         line_item_array = app.sheet.get_affected_line_items_from_sheet(
             zone.name
         )
-        # Get the current algorithm directly from DV360
+        # Get the current algorithm directly from DV360.
         custom_bidding_current_script = (
             app.platform_object.read_cb_algorithm_by_id(
                 app.service,
@@ -268,7 +268,7 @@ def main(argv: Any) -> int:
           # and don't upload.  Just return False from this function.
           print('New script is the same as the existing script; not uploading')
 
-          # Go to next item in outer loop
+          # Go to next item in outer loop.
           continue
         else:
           print(
@@ -296,7 +296,7 @@ def main(argv: Any) -> int:
           else:
             print(f'Update of C.B. Script for zone {zone.name} succeeded.')
             # Update of C.B. script was successful, update the Google
-            # Sheets spreadsheet tab named 'CB_Scripts'
+            # Sheets spreadsheet tab named 'CB_Scripts' (by default).
             app.sheet.update_cb_scripts_tab(
                 zone, custom_bidding_function_string, test_run=False
             )
@@ -310,7 +310,7 @@ def main(argv: Any) -> int:
             )
         )
         # Write the Test Run out to the test column in the associated
-        # Google Sheet in the tab 'CB_Scripts'
+        # Google Sheet in the tab 'CB_Scripts'.
         app.sheet.update_status_tab(
             'CB_Scripts', zone, custom_bidding_string, test_run=True
         )
@@ -359,6 +359,7 @@ def create_objects_from_json_file(filename: str) -> Bid2xApplication:
   Returns:
       The created app object.
   """
+
   global app
 
   if filename:
@@ -366,7 +367,7 @@ def create_objects_from_json_file(filename: str) -> Bid2xApplication:
     # Then read input file into new object.
     stored_app = util.read_config(filename)
 
-    # Determine what type of system this config file is for
+    # Determine what type of system this config file is for.
     if stored_app['platform_type'] and (
         stored_app['platform_type'].upper() in ('DV', 'GTM')
     ):
@@ -436,7 +437,7 @@ def create_objects_from_json_file(filename: str) -> Bid2xApplication:
     ):
       print('Failure on auth sub-service')
 
-    # Re-initialize gc (gspread) object (not saved in JSON)
+    # Re-initialize gc (gspread) object (not saved in JSON).
     app.sheet.gc = gspread.service_account(filename=app.sheet.json_auth_file)
 
   else:
@@ -504,7 +505,7 @@ def create_objects_from_json_file(filename: str) -> Bid2xApplication:
 process_command_line_args()
 
 app: bid2x_application.Bid2xApplication = None
-# Create objects based on passed file
+# Create objects based on passed file.
 app = create_objects_from_json_file(bid2x_var.INPUT_FILE)
 
 # If our entrypoint is main then run it.  The function hello_pubsub() is

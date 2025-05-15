@@ -72,11 +72,11 @@ class Bid2xApplication():
     self.trace = False
     self.platform_type = platform_type
 
-    # Establish connection to Sheets
+    # Establish connection to Sheets.
     self.sheet = Bid2xSpreadsheet(sheet_id, auth_file)
     self.zone_array = []
 
-    # Create product-specific auth object
+    # Create product-specific auth object.
     self.auth = bid2x_auth.Bid2xAuth(scopes, api_name, api_version)
 
   def __str__(self) -> str:
@@ -225,7 +225,7 @@ class Bid2xApplication():
     """
     # Ensure that the 'sheet' property has been initialized and exists.
     if not hasattr(self, 'sheet'):
-      # Sheet object not here - re-initing new one
+      # Sheet object not here - re-initing new one.
       self.sheet = Bid2xSpreadsheet(
           bid2x_var.SPREADSHEET_KEY, bid2x_var.JSON_AUTH_FILE
       )
@@ -240,16 +240,16 @@ class Bid2xApplication():
     self.sheet.debug = bid2x_var.DEBUG
     self.sheet.trace = bid2x_var.TRACE
 
-    # Platform type for Bid2X instance
+    # Platform type for Bid2X instance.
     self.platform_type = bid2x_var.PLATFORM_TYPE
 
-    # Connection-related properties
+    # Connection-related properties.
     self.scopes = bid2x_var.API_SCOPES
     self.api_name = bid2x_var.API_NAME
     self.api_version = bid2x_var.API_VERSION
 
     self.debug = bid2x_var.DEBUG
-    # self.platform_object.debug = bid2x_var.DEBUG
+
     self.json_auth_file = bid2x_var.JSON_AUTH_FILE
     self.service_account_email = bid2x_var.SERVICE_ACCOUNT_EMAIL
 
@@ -271,7 +271,7 @@ class Bid2xApplication():
         zone_index += 1
 
     if self.platform_type == bid2x_var.PlatformType.DV:
-      # Initialize action-related properties
+      # Initialize action-related properties.
       self.platform_object.action_list_algos = bool(bid2x_var.ACTION_LIST_ALGOS)
       self.platform_object.action_list_scripts = bool(
           bid2x_var.ACTION_LIST_SCRIPTS
@@ -290,7 +290,7 @@ class Bid2xApplication():
       )
       self.platform_object.action_test = bool(bid2x_var.ACTION_TEST)
 
-      # Initialize all the rest of the properties
+      # Initialize all the rest of the properties.
       self.platform_object.clear_onoff = bid2x_var.CLEAR_ONOFF
       self.sheet.clear_onoff = bid2x_var.CLEAR_ONOFF
       self.platform_object.defer_pattern = bid2x_var.DEFER_PATTERN

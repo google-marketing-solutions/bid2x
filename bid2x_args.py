@@ -33,10 +33,10 @@ def process_command_line_args() -> None:
   """Performs the command line argument processing.
 
   """
-  # Process arguments
+  # Set up parser object to process arguments.
   parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
 
-  # on/off arguments
+  # Process on/off arguments.
   parser.add_argument(
       '-aa',
       '--alt_algo',
@@ -75,7 +75,7 @@ def process_command_line_args() -> None:
       help='Run script in trace mode ' + '(top level verbosity of output)',
   )
 
-  # default value numeric arguments
+  # Set up the default value numeric arguments.
   parser.add_argument(
       '-a',
       '--advertiser',
@@ -119,7 +119,7 @@ def process_command_line_args() -> None:
       help='DV360 Partner ID to use',
   )
 
-  # default value names / filenames
+  # Set up default value names / filenames.
   parser.add_argument(
       '-f',
       '--floodlight',
@@ -184,7 +184,7 @@ def process_command_line_args() -> None:
       help='Sales zones to process',
   )
 
-  # action arguments
+  # Set up action arguments.
   parser.add_argument(
       '-ac',
       '--action_create',
@@ -239,7 +239,7 @@ def process_command_line_args() -> None:
 
   args = vars(parser.parse_args())
 
-  # Set Actions from arguments
+  # Set Actions from arguments.
   bid2x_var.ACTION_LIST_ALGOS = args['action_list_algos']
   bid2x_var.ACTION_LIST_SCRIPTS = args['action_list_scripts']
   bid2x_var.ACTION_CREATE_ALGORITHM = args['action_create']
@@ -248,20 +248,20 @@ def process_command_line_args() -> None:
   bid2x_var.ACTION_UPDATE_SCRIPTS = args['action_update']
   bid2x_var.ACTION_TEST = args['action_test']
 
-  # Set debug flag from arguments
+  # Set debug flag from arguments.
   bid2x_var.DEBUG = args['debug']
   bid2x_var.TRACE = args['verbose']
 
-  # Names
+  # Set Names.
   bid2x_var.NEW_ALGO_NAME = args['algo_name']
   bid2x_var.NEW_ALGO_DISPLAY_NAME = args['algo_display_name']
 
-  # Set files used in the solution from the arguments
+  # Set files used in the solution from the arguments.
   bid2x_var.JSON_AUTH_FILE = args['json_file']
   bid2x_var.CB_TMP_FILE_PREFIX = args['tmp']
   bid2x_var.CB_LAST_UPDATE_FILE_PREFIX = args['last_upload']
 
-  # Value-specific information (defaults)
+  # Value-specific information (defaults).
   bid2x_var.PARTNER_ID = args['partner']
   bid2x_var.ADVERTISER_ID = args['advertiser']
   bid2x_var.CB_ALGO_ID = args['algorithm']
