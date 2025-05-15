@@ -154,8 +154,7 @@ def main(argv: Any) -> int:
       # Show advertiser level scripts for each initialized zone
       for zone in app.zone_array:
         response = app.platform_object.list_advertiser_algo_scripts(
-            app.service,
-            zone.advertiser_id
+            app.service, zone.advertiser_id
         )
         if app.debug:
           print(
@@ -190,9 +189,7 @@ def main(argv: Any) -> int:
         )
         print(f'New algorithm name: {display_name}')
         response = app.platform_object.create_cb_algorithm_advertiser(
-            app.service,
-            app.platform_object.advertiser_id,
-            algorithm_name,
+            app.service, app.platform_object.advertiser_id, algorithm_name,
             display_name
         )
 
@@ -263,8 +260,8 @@ def main(argv: Any) -> int:
         )
         # Compare the new script and the previously uploaded script.
         if (
-            str(custom_bidding_function_string).strip()
-            == str(custom_bidding_current_script).strip()
+            str(custom_bidding_function_string).strip() ==
+            str(custom_bidding_current_script).strip()
         ):
 
           # The new script is the same as the old script, don't write to file
@@ -321,8 +318,10 @@ def main(argv: Any) -> int:
         if app.trace:
           # Print the value of the script to the console - since this runs
           # typically as a Cloud Function then this will end up in the logs.
-          print(f"""rules for zone {zone.name}:\n
-                {custom_bidding_string}""")
+          print(
+              f"""rules for zone {zone.name}:\n
+                {custom_bidding_string}"""
+          )
 
     if app.platform_object.action_update_spreadsheet:
       app.sheet.read_dv_line_items(
@@ -336,10 +335,13 @@ def main(argv: Any) -> int:
   elif app.platform_type == bid2x_var.PlatformType.GTM.value:
 
     if app.platform_object.action_update_scripts:
-      app.platform_object.process_script(app.service, app.zone_array)
-
-    # elif app.platform_object.action_test:
-    # app.platform_object.process_script(app.service)
+      app.platform_object.process_script(
+          app.service, app.zone_array, test_flag=False
+      )
+    elif app.platform_object.action_test:
+      app.platform_object.process_script(
+          app.service, app.zone_array, test_flag=True
+      )
   else:
     print('Unable to connect to service object - stopped')
     return -1
@@ -367,7 +369,7 @@ def create_objects_from_json_file(filename: str) -> Bid2xApplication:
     # Determine what type of system this config file is for
     if stored_app['platform_type'] and (
         stored_app['platform_type'].upper() in ('DV', 'GTM')
-        ):
+    ):
 
       app = Bid2xApplication(
           stored_app['scopes'],
@@ -386,8 +388,9 @@ def create_objects_from_json_file(filename: str) -> Bid2xApplication:
     # Update all values in app object with newly read values.
     # Copy 'sheet' sub-object items to app.
     if 'sheet' in stored_app:
-      app.sheet.top_level_copy(stored_app['sheet'],
-                               stored_app['platform_type'].upper())
+      app.sheet.top_level_copy(
+          stored_app['sheet'], stored_app['platform_type'].upper()
+      )
 
     if 'zone_array' in stored_app:
       # Remove all previous zones first.
@@ -461,29 +464,29 @@ def create_objects_from_json_file(filename: str) -> Bid2xApplication:
       if app.platform_type == bid2x_var.PlatformType.DV.value:
         app.zone_array.append(
             Bid2xModel(
-                f'Campaign_{zone}',                        # name
-                bid2x_var.DEFAULT_MODEL_CAMPAIGN_ID + i,   # campaign id
-                bid2x_var.ADVERTISER_ID,                   # advertiser id
+                f'Campaign_{zone}',  # name
+                bid2x_var.DEFAULT_MODEL_CAMPAIGN_ID + i,  # campaign id
+                bid2x_var.ADVERTISER_ID,  # advertiser id
                 bid2x_var.DEFAULT_MODEL_ALGORITHM_ID + i,  # algorithm id
-                bid2x_var.DEBUG,                           # debug flag
-                bid2x_var.DEFAULT_MODEL_SHEET_ROW + 1,     # sheet row update
-                bid2x_var.DEFAULT_CB_SCRIPT_COL_UPDATE,    # sheet col update
-                bid2x_var.DEFAULT_MODEL_SHEET_ROW + 1,     # sheet row test
-                bid2x_var.DEFAULT_CB_SCRIPT_COL_TEST       # sheet col test
+                bid2x_var.DEBUG,  # debug flag
+                bid2x_var.DEFAULT_MODEL_SHEET_ROW + 1,  # sheet row update
+                bid2x_var.DEFAULT_CB_SCRIPT_COL_UPDATE,  # sheet col update
+                bid2x_var.DEFAULT_MODEL_SHEET_ROW + 1,  # sheet row test
+                bid2x_var.DEFAULT_CB_SCRIPT_COL_TEST  # sheet col test
             )
         )
       elif app.platform_type == bid2x_var.PlatformType.GTM.value:
         app.zone_array.append(
             Bid2xGTMModel(
-                f'GTM_{zone}',                              # name
-                bid2x_var.GTM_ACCOUNT_ID,                   # account id
-                bid2x_var.GTM_CONTAINER_ID,                 # container id
-                bid2x_var.GTM_WORKSPACE_ID,                 # workspace id
-                bid2x_var.GTM_VARIABLE_ID + i,              # variable id
-                bid2x_var.DEFAULT_MODEL_SHEET_ROW + 1,      # sheet row update
-                bid2x_var.DEFAULT_CB_SCRIPT_COL_UPDATE,     # sheet col update
-                bid2x_var.DEFAULT_MODEL_SHEET_ROW + 1,      # sheet row test
-                bid2x_var.DEFAULT_CB_SCRIPT_COL_TEST        # sheet col test
+                f'GTM_{zone}',  # name
+                bid2x_var.GTM_ACCOUNT_ID,  # account id
+                bid2x_var.GTM_CONTAINER_ID,  # container id
+                bid2x_var.GTM_WORKSPACE_ID,  # workspace id
+                bid2x_var.GTM_VARIABLE_ID + i,  # variable id
+                bid2x_var.DEFAULT_MODEL_SHEET_ROW + 1,  # sheet row update
+                bid2x_var.DEFAULT_CB_SCRIPT_COL_UPDATE,  # sheet col update
+                bid2x_var.DEFAULT_MODEL_SHEET_ROW + 1,  # sheet row test
+                bid2x_var.DEFAULT_CB_SCRIPT_COL_TEST  # sheet col test
             )
         )
       i += 1
@@ -494,11 +497,11 @@ def create_objects_from_json_file(filename: str) -> Bid2xApplication:
 
   return app
 
+
 # Walk sys.argv using argparse to process passed arguments.
 # The use of command line arguments is meant for development or for
 # running the system from the command line.
 process_command_line_args()
-
 
 app: bid2x_application.Bid2xApplication = None
 # Create objects based on passed file
