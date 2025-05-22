@@ -123,6 +123,8 @@ CPU='1'
 # campaign and a large download of Line Items can exhaust memory
 # (watch the logs). Don't be afraid to increase this number as needed.
 MEMORY='512Mi'
+# MEMORY='1Gi'
+# MEMORY='2Gi'
 
 # ----------------------------------------------------------------------------
 # Service account(s) for the deployment.
@@ -474,6 +476,7 @@ if [[ ${GRANT_PERMISSIONS} -eq 1 ]]; then
   gcloud projects add-iam-policy-binding "${PROJECT}" \
       --member "serviceAccount:${SERVICE_ACCOUNT}"    \
       --role="roles/cloudscheduler.serviceAgent"      \
+      --condition=None                                \
       "${QUIET}"
 
   log_message 1 "Add Cloud Job Invoker Permissions to Invoker Service Account"
@@ -481,6 +484,7 @@ if [[ ${GRANT_PERMISSIONS} -eq 1 ]]; then
   gcloud projects add-iam-policy-binding ${PROJECT}         \
       --member "serviceAccount:${INVOKER_SERVICE_ACCOUNT}"  \
       --role "roles/run.invoker"                            \
+      --condition=None                                      \
       "${QUIET}"
 
   log_message 1 "Add Permissions for INVOKER to access GCS as Viewer"
@@ -488,6 +492,7 @@ if [[ ${GRANT_PERMISSIONS} -eq 1 ]]; then
   gcloud projects add-iam-policy-binding ${PROJECT}         \
       --member "serviceAccount:${INVOKER_SERVICE_ACCOUNT}"  \
       --role "roles/storage.objectViewer"                   \
+      --condition=None                                      \
       "${QUIET}"
 
   echo "IAM permissioning completed."
