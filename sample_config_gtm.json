@@ -1,73 +1,66 @@
 {
-    "scopes": [
-        "https://www.googleapis.com/auth/tagmanager.edit.containerversions",
-        "https://www.googleapis.com/auth/tagmanager.edit.containers",
-        "https://www.googleapis.com/auth/tagmanager.publish",
-        "https://www.googleapis.com/auth/tagmanager.readonly",
-        "https://www.googleapis.com/auth/tagmanager.delete.containers",
-        "https://www.googleapis.com/auth/spreadsheets"
-    ],
-    "api_name": "tagmanager",
-    "api_version": "v2",
-    "platform_type": "GTM",
-    "sheet": {
-      "sheet_id": "1FqujqXpWSU7tbIjKIRTYKhgguScy4kPBbGjQ2IkoyIw",
-      "sheet_url": "https://docs.google.com/spreadsheets/d/1FqujqXpWSU7tbIjKIRTYKhgguScy4kPBbGjQ2IkoyIw/edit",
-      "json_auth_file": "gtm_auth_file.json",
-      "debug": true
-    },
-    "zone_array": [
-      {
-        "name": "GTM_T1",
-        "account_id": 4702585451,
-        "container_id": 12659025,
-        "workspace_id": 675,
-        "variable_id": 113,
-        "debug": true,
-        "update_row": 3,
-        "update_col": 2,
-        "test_row": 3,
-        "test_col": 4
-      },
-      {
-        "name": "GTM_T2",
-        "account_id": 4702585451,
-        "container_id": 12659025,
-        "workspace_id": 675,
-        "variable_id": 114,
-        "debug": true,
-        "update_row": 4,
-        "update_col": 2,
-        "test_row": 4,
-        "test_col": 4
-      }
-    ],
-    "debug": true,
-    "trace": false,
+  "scopes": [
+      "https://www.googleapis.com/auth/tagmanager.edit.containerversions",
+      "https://www.googleapis.com/auth/tagmanager.edit.containers",
+      "https://www.googleapis.com/auth/tagmanager.publish",
+      "https://www.googleapis.com/auth/tagmanager.readonly",
+      "https://www.googleapis.com/auth/tagmanager.delete.containers",
+      "https://www.googleapis.com/auth/spreadsheets"
+  ],
+  "api_name": "tagmanager",
+  "api_version": "v2",
+  "platform_type": "GTM",
+  "sheet": {
+    "sheet_id": "1FqujqXpWSU7tbIjKIRTYKhgguScy4kPBbGjQ2IkoyIw",
+    "sheet_url": "https://docs.google.com/spreadsheets/d/1FqujqXpWSU7tbIjKIRTYKhgguScy4kPBbGjQ2IkoyIw/edit",
     "json_auth_file": "gtm_auth_file.json",
-    "service_account_email": "service_account@project_name.iam.gserviceaccount.com",
-    "gtm_account_id": 999999,
-    "gtm_container_id": 8888888,
-    "gtm_workspace_id": 1,
-    "gtm_variable_id": 1,
-    "gtm_index_filename": "Test_bid2Load",
-    "gtm_index_tab": "index_file",
-    "gtm_value_adjustment_tab_name": "value_adjustment",
-    "gtm_normal_total_var": "theTotalInUSD",
-    "gtm_floodlight_list": [
-      "FloodlightName_1",
-      "FloodlightName_2"],
-    "gtm_normal_total_list": [
-      "TotalVarForFloodlight_1",
-      "TotalVarForFloodlight_2"
-    ],
-    "gtm_cond_var_1": "Pixel-item-one",
-    "gtm_cond_var_2": "Pixel-item-two",
-    "value_adjustment_column_name": "VALUE_ADJUSTMENT",
-    "index_factor_column_name": "INDEX_FACTOR",
-    "index_low_column_name": "INDEX_LOW",
-    "index_high_column_name": "INDEX_HIGH",
-    "zones_to_process": "T1,T2",
-    "action_update_scripts": false,
-    "action_test": false
-  }
+    "debug": true
+  },
+  "zone_array": [
+    {
+      "name": "GTM_T1",
+      "account_id": 4702585451,
+      "container_id": 12659025,
+      "workspace_id": 675,
+      "variable_id": 113,
+      "debug": true,
+      "update_row": 3,
+      "update_col": 2,
+      "test_row": 3,
+      "test_col": 4
+    }
+  ],
+  "debug": true,
+  "trace": false,
+  "json_auth_file": "gtm_auth_file.json",
+  "service_account_email": "service_account@project_name.iam.gserviceaccount.com",
+  "gtm_account_id": 999999,
+  "gtm_container_id": 8888888,
+  "gtm_workspace_id": 1,
+  "gtm_variable_id": 1,
+  "gtm_index_filename": "Test_bid2Load",
+  "gtm_index_tab": "index_file",
+  "gtm_value_adjustment_tab_name": "value_adjustment",
+  "gtm_normal_total_var": "theTotalInUSD",
+  "gtm_floodlight_list": [
+    {
+      "name": "Floodlight_1",
+      "condition": "{{Event}} == 'Event_name_1'",
+      "total_var": "conversion_var_default_value_1"
+    },
+    {
+      "name": "Floodlight_2",
+      "condition": "customPageName.toLowerCase().includes('shopping-tools') || customPageName.toLowerCase().includes('configurator')",
+      "total_var": "conversion_var_default_value_2"
+    }
+],
+  "gtm_cond_var_1": "Pixel-item-one",
+  "gtm_cond_var_2": "Pixel-item-two",
+  "value_adjustment_column_name": "VALUE_ADJUSTMENT",
+  "index_factor_column_name": "INDEX_FACTOR",
+  "index_low_column_name": "INDEX_LOW",
+  "index_high_column_name": "INDEX_HIGH",
+  "zones_to_process": "GTM_T1",
+  "action_update_scripts": false,
+  "action_test": true
+}

@@ -79,7 +79,6 @@ class Bid2xGTM(Platform):
   trace: bool = False
 
   gtm_normal_total_var: str
-  gtm_normal_total_list: list[str]
   gtm_floodlight_list: list[str]
   gtm_cond_var_1: str
   gtm_cond_var_2: str
@@ -109,7 +108,6 @@ class Bid2xGTM(Platform):
     self.gtm_cond_gtm_var_2 = bid2x_var.GTMColumns.GTM_VAR_2.value
     self.gtm_normal_total_var = bid2x_var.GTMColumns.GTM_NORMAL_TOTAL.value
 
-    self.gtm_normal_total_list = bid2x_var.GTMColumns.GTM_NORMAL_TOTAL_LIST
     self.gtm_floodlight_list = bid2x_var.GTMColumns.GTM_FLOODLIGHT_LIST
     self.value_adjustment_column_name = (
         bid2x_var.GTMColumns.VALUE_ADJUSTMENT.value
@@ -118,7 +116,7 @@ class Bid2xGTM(Platform):
     self.index_low_column_name = bid2x_var.GTMColumns.INDEX_LOW
     self.index_high_column_name = bid2x_var.GTMColumns.INDEX_HIGH
 
-    self.zones_to_process = 't1'
+    self.zones_to_process = bid2x_var.ZONES_TO_PROCESS
 
   def __str__(self) -> str:
     """Override str method to return a sensible string.
@@ -137,7 +135,6 @@ class Bid2xGTM(Platform):
         f'trace: {self.trace}\n'
         f'gtm_value_adjustment_tab: {self.value_adjustment_tab_name}\n'
         f'gtm_normal_total_var: {self.gtm_normal_total_var}\n'
-        f'gtm_normal_total_list: {self.gtm_normal_total_list}\n'
         f'gtm_floodlight_list: {self.gtm_floodlight_list}\n'
         f'gtm_cond_var_1: {self.gtm_cond_var_1}\n'
         f'gtm_cond_var_2: {self.gtm_cond_var_2}\n'
@@ -260,20 +257,32 @@ class Bid2xGTM(Platform):
 
     # Set the header part of the function for GTM.
     js_function_string_start = 'function() {\n'
+    js_function_string_start += 'var conversion_value = 0.0;\n'
+
+    fl_iter = 0
 
     # Run a loop for the list of floodlight names passed.
-    for floodlight, revenue in zip(
-        self.gtm_floodlight_list, self.gtm_normal_total_list
-    ):
-      js_function_string_start += f"if ({{Event}} == '{floodlight}') "
+    for floodlight_obj in self.gtm_floodlight_list:
+
+      # Determine clause prefix.
+      if fl_iter > 0:
+        fl_clause_prefix = 'else '
+      else:
+        fl_clause_prefix = ''
+
+      js_function_string_start += f'{fl_clause_prefix}if '
+      js_function_string_start += f'( {floodlight_obj.get("condition")} ) '
       js_function_string_start += '{\n'
-      js_function_string_start += '  var adjusted_value = {{'
-      js_function_string_start += f'{revenue}'
+      js_function_string_start += '  conversion_value = {{'
+      js_function_string_start += f'{floodlight_obj.get("total_var")}'
       js_function_string_start += '}};\n'
 
       # Create the repeating part of the function string by
       # starting with a blank string.
       js_function_string_middle = ''
+
+      # Advance the floodlight counter.
+      fl_iter = fl_iter + 1
 
       # Walk the passed dataframe a row at a time.
       for row_iter, irow in input_df.iterrows():
@@ -313,18 +322,19 @@ class Bid2xGTM(Platform):
         js_function_string_middle += f"'{second_item}') "
         js_function_string_middle += '{\n'
         js_function_string_middle += (
-            '    adjusted_value = {{'
-            f'{revenue}'
-            '}} * '
+            '    conversion_value *= '
         )
-        js_function_string_middle += f'{adjustment}; '
+        js_function_string_middle += f'{adjustment}; '  # This is the index
+                                                        # adjustment/multiplier
+                                                        # to the default conv.
+                                                        # value.
         js_function_string_middle += '}\n'
 
       js_function_string_start += js_function_string_middle + '}\n'
       # End of floodlight loop.
 
     # Define the end of the function.
-    js_function_string_end = ' return adjusted_value; }'
+    js_function_string_end = ' return conversion_value; }'
 
     # Assemble the JavaScript function.
     js_function_string = (js_function_string_start + js_function_string_end)
@@ -552,7 +562,6 @@ class Bid2xGTM(Platform):
     self.gtm_cond_var_1 = source['gtm_cond_var_1']
     self.gtm_cond_var_2 = source['gtm_cond_var_2']
     self.gtm_floodlight_list = source['gtm_floodlight_list']
-    self.gtm_normal_total_list = source['gtm_normal_total_list']
     self.value_adjustment_column_name = source['value_adjustment_column_name']
     self.index_factor_column_name = source['index_factor_column_name']
     self.index_low_column_name = source['index_low_column_name']
