@@ -78,7 +78,6 @@ class Bid2xGTM(Platform):
   debug: bool = False
   trace: bool = False
 
-  gtm_normal_total_var: str
   gtm_floodlight_list: list[str]
   gtm_cond_var_1: str
   gtm_cond_var_2: str
@@ -106,7 +105,6 @@ class Bid2xGTM(Platform):
 
     self.gtm_cond_gtm_var_1 = bid2x_var.GTMColumns.GTM_VAR_1.value
     self.gtm_cond_gtm_var_2 = bid2x_var.GTMColumns.GTM_VAR_2.value
-    self.gtm_normal_total_var = bid2x_var.GTMColumns.GTM_NORMAL_TOTAL.value
 
     self.gtm_floodlight_list = bid2x_var.GTMColumns.GTM_FLOODLIGHT_LIST
     self.value_adjustment_column_name = (
@@ -134,7 +132,6 @@ class Bid2xGTM(Platform):
         f'debug: {self.debug}\n'
         f'trace: {self.trace}\n'
         f'gtm_value_adjustment_tab: {self.value_adjustment_tab_name}\n'
-        f'gtm_normal_total_var: {self.gtm_normal_total_var}\n'
         f'gtm_floodlight_list: {self.gtm_floodlight_list}\n'
         f'gtm_cond_var_1: {self.gtm_cond_var_1}\n'
         f'gtm_cond_var_2: {self.gtm_cond_var_2}\n'
@@ -270,8 +267,19 @@ class Bid2xGTM(Platform):
       else:
         fl_clause_prefix = ''
 
-      js_function_string_start += f'{fl_clause_prefix}if '
-      js_function_string_start += f'( {floodlight_obj.get("condition")} ) '
+      # The dictionary for the gtm_floodlight_list can contain 'name',
+      # 'total_var', and optionally 'condition'.  If condition exists
+      # then use it as the conditional statement in the JavaScript fn
+      # being generated.  If it doesn't exist then assume the name of
+      # the event will be the same as the given name of the
+      # floodlight.
+      if 'condition' in floodlight_obj:
+        conditional = floodlight_obj.get('condition')
+      else:
+        floodlight_name = floodlight_obj.get('name')
+        conditional = ' {{Event}} == ' + f'"{floodlight_name}" '
+
+      js_function_string_start += f'{fl_clause_prefix}if ( {conditional} ) '
       js_function_string_start += '{\n'
       js_function_string_start += '  conversion_value = {{'
       js_function_string_start += f'{floodlight_obj.get("total_var")}'
@@ -558,7 +566,6 @@ class Bid2xGTM(Platform):
 
     self.value_adjustment_tab_name = source['gtm_value_adjustment_tab_name']
 
-    self.gtm_normal_total_var = source['gtm_normal_total_var']
     self.gtm_cond_var_1 = source['gtm_cond_var_1']
     self.gtm_cond_var_2 = source['gtm_cond_var_2']
     self.gtm_floodlight_list = source['gtm_floodlight_list']
