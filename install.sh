@@ -78,7 +78,7 @@
 # Set this to the GCP project name (not the ID) that you are deploying into.
 # If you're not sure what the current project is use the command
 # 'gcloud config get-value project'.
-PROJECT="bid2x-deploy-test"
+PROJECT="bid2x-deployment-project"
 
 # Set this to the GCP region you are deploying in (NOT THE ZONE i.e. should
 # not end with 'a' or 'b' or whatever).
@@ -131,10 +131,12 @@ MEMORY='512Mi'
 # ----------------------------------------------------------------------------
 # Service account used for IAM calls and "cloud run jobs deploy" commands.
 SERVICE_ACCOUNT="bid2x-service@${PROJECT}.iam.gserviceaccount.com"
+#SERVICE_ACCOUNT="improvado-service-account@${PROJECT}.iam.gserviceaccount.com"
 
 # The SA that will RUN the Cloud Run command (i.e. with
 # run.jobs.run permission).
 INVOKER_SERVICE_ACCOUNT="bid2x-service@${PROJECT}.iam.gserviceaccount.com"
+# INVOKER_SERVICE_ACCOUNT="improvado-service-account@${PROJECT}.iam.gserviceaccount.com"
 
 # The two service account variables above MAY be the same but can also be
 # different; depending on your requirements.
@@ -147,6 +149,10 @@ INVOKER_SERVICE_ACCOUNT="bid2x-service@${PROJECT}.iam.gserviceaccount.com"
 # The name given to the Cloud Run Job for the weekly run.  This is the name
 # of the Cloud Run job in the UI.
 WEEKLY_CLOUD_RUN_JOB_NAME="bid2x-weekly"
+# This is the name of the test deployment. The test deployment makes a
+# Cloud Run Job instance that is NOT scheduled to run but can be used to
+# manually test the deployment.
+WEEKLY_CLOUD_RUN_JOB_TEST="bid2x-test-run"
 
 # <min 0-60,*> <hour 0-23,*> <day 1-31,*> <month 1-12,*> <day of week 1-7,*>.
 # The default of "0 20 * * 7" is a schedule for Sundays(7) at 8pm (20:00).
@@ -154,7 +160,14 @@ WEEKLY_CRON_SCHEDULE="0 20 * * 7"
 
 # This file should already exist and be readable; there is a test for
 # existence of this file in the pre-run checks.
+# WEEKLY_CONFIG points to the configuration file (.JSON) for bid2x
+# that runs weekly on a scheduled basis.
+# WEEKLY_CONFIG_TEST points to a file that normally runs with the
+# config of 'action_test = True'.  This is a convenience deployment
+# that does not have an associated Cloud Scheduler event but can
+# be run by the deployer manually to ensure expected behavior.
 WEEKLY_CONFIG="sample_config_dv.json"
+WEEKLY_CONFIG_TEST="testrun_dv.json"
 
 # You want a different name for the scheduler job?  Oh, you fancy huh?!
 WEEKLY_SCHEDULER_JOB_NAME="${WEEKLY_CLOUD_RUN_JOB_NAME}-scheduled-update"
@@ -385,7 +398,7 @@ fi
 if [[ ${PRE_RUN_CHECKS} -eq 1 ]]; then
   log_message 0 "Running pre-run checks"
 
-  # Check 1: Existence and readability of the first file.
+  # Check 1a: Existence and readability of the config for the standard Cloud Run Job file.
   log_message 1 "Checking for file: ${WEEKLY_CONFIG}..."
   if [[ ! -r "${WEEKLY_CONFIG}" ]]; then
     # Print error message to standard error (>&2).
@@ -393,6 +406,16 @@ if [[ ${PRE_RUN_CHECKS} -eq 1 ]]; then
     exit 2 # Exit the script with a non-zero status code.
   fi
   echo "File found: ${WEEKLY_CONFIG}"
+
+  # Check 1b: Existence and readability of the config for the test Cloud Run Job file.
+  log_message 1 "Checking for file: ${WEEKLY_CONFIG_TEST}..."
+  if [[ ! -r "${WEEKLY_CONFIG_TEST}" ]]; then
+    # Print error message to standard error (>&2).
+    echo "Error: Required file not found or not readable: ${WEEKLY_CONFIG_TEST}" >&2
+    exit 2 # Exit the script with a non-zero status code.
+  fi
+  echo "File found: ${WEEKLY_CONFIG_TEST}"
+
 
   # Check 2: Existence and readability of the second file.
   # If this a 'DV' type installation check for the second config file as well.
@@ -518,6 +541,12 @@ if [[ ${DELETE_OLD_INSTALL} -eq 1 ]]; then
     --region="${REGION}"                              \
     "${QUIET}"
 
+  log_message 1 "Delete old install of test run"
+  gcloud run jobs delete ${WEEKLY_CLOUD_RUN_JOB_TEST} \
+    --project="${PROJECT}"                            \
+    --region="${REGION}"                              \
+    "${QUIET}"
+
   # Delete old install of weekly scheduler.
   log_message 1 "Delete old install of weekly scheduler"
   gcloud scheduler jobs delete ${WEEKLY_SCHEDULER_JOB_NAME}  \
@@ -591,6 +620,13 @@ if [[ ${GCS_OPERATIONS} -eq 1 ]]; then
       --project="${PROJECT}" \
       || { echo "ERROR: Failed to copy ${WEEKLY_CONFIG}"; exit 1; }
     echo "Successfully copied '${WEEKLY_CONFIG}'."
+
+    # Copy test run config file to the bucket.
+    gcloud storage cp "${WEEKLY_CONFIG_TEST}" "${GCS_DESTINATION_URI}" \
+      --project="${PROJECT}" \
+      || { echo "ERROR: Failed to copy ${WEEKLY_CONFIG}"; exit 1; }
+    echo "Successfully copied '${WEEKLY_CONFIG_TEST}'."
+
   else
     echo "WEEKLY_CONFIG variable not defined. Skipping copy."
   fi
@@ -632,10 +668,11 @@ if [[ ${DEPLOY_JOBS} -eq 1 ]]; then
     # directory are zip'd up and included so the config JSON files
     # should be present to use.
     WEEKLY_ARGS="-i,gs://${BUCKET_NAME}/${WEEKLY_CONFIG}"
+    WEEKLY_ARGS_TEST="-i,gs://${BUCKET_NAME}/${WEEKLY_CONFIG_TEST}"
     DAILY_ARGS="-i,gs://${BUCKET_NAME}/${DAILY_CONFIG}"
   fi
 
-  # Deploy Cloud Run Job for Daily update.
+  # Deploy Cloud Run Job for Weekly update.
   log_message 1 "Deploy Cloud Run Job for Weekly update"
   gcloud run jobs deploy "${WEEKLY_CLOUD_RUN_JOB_NAME}" \
     --source .                                          \
@@ -649,6 +686,21 @@ if [[ ${DEPLOY_JOBS} -eq 1 ]]; then
     --cpu="${CPU}"                                      \
     --memory="${MEMORY}"                                \
     "${QUIET}"
+
+  # Deploy Cloud Run Job for manual test runs.
+  gcloud run jobs deploy "${WEEKLY_CLOUD_RUN_JOB_TEST}" \
+    --source .                                          \
+    --tasks 1                                           \
+    --max-retries 1                                     \
+    --args="${WEEKLY_ARGS_TEST}"                        \
+    --region "${REGION}"                                \
+    --service-account="${INVOKER_SERVICE_ACCOUNT}"      \
+    --project="${PROJECT}"                              \
+    --task-timeout="${TASK_TIMEOUT}"                    \
+    --cpu="${CPU}"                                      \
+    --memory="${MEMORY}"                                \
+    "${QUIET}"
+
 
   if [[ ${DEPOLYMENT_TYPE} == 'DV' ]]; then
     # Deploy Cloud Run Job for Daily update for DV type installations.
