@@ -742,7 +742,8 @@ if [[ ${CREATE_SCHEDULER_JOBS} -eq 1 ]]; then
     --schedule="${WEEKLY_CRON_SCHEDULE}"                           \
     --uri="${WEEKLY_INVOCATION_URI}"                               \
     --http-method=POST                                             \
-    --oidc-service-account-email="${SERVICE_ACCOUNT}"              \
+    --oauth-service-account-email="${SERVICE_ACCOUNT}"             \
+    --oauth-token-scope="https://www.googleapis.com/auth/cloud-platform" \
     --location="${REGION}"                                         \
     --time-zone="${TIMEZONE}"                                      \
     --project="${PROJECT}"                                         \
@@ -764,7 +765,8 @@ if [[ ${CREATE_SCHEDULER_JOBS} -eq 1 ]]; then
       --schedule="${DAILY_CRON_SCHEDULE}"                           \
       --uri="${DAILY_INVOCATION_URI}"                               \
       --http-method=POST                                            \
-      --oidc-service-account-email="${SERVICE_ACCOUNT}"             \
+      --oauth-service-account-email="${SERVICE_ACCOUNT}"             \
+      --oauth-token-scope="https://www.googleapis.com/auth/cloud-platform" \
       --location="${REGION}"                                        \
       --time-zone="${TIMEZONE}"                                     \
       --project="${PROJECT}"                                        \
