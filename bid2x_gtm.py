@@ -79,6 +79,8 @@ class Bid2xGTM(Platform):
   trace: bool = False
 
   gtm_floodlight_list: list[str]
+  gtm_preprocessing_script: str
+  gtm_postprocessing_script: str
   gtm_cond_var_1: str
   gtm_cond_var_2: str
   value_adjustment_column_name: str
@@ -107,6 +109,8 @@ class Bid2xGTM(Platform):
     self.gtm_cond_gtm_var_2 = bid2x_var.GTMColumns.GTM_VAR_2.value
 
     self.gtm_floodlight_list = bid2x_var.GTMColumns.GTM_FLOODLIGHT_LIST
+    self.gtm_preprocessing_script = bid2x_var.GTM_PREPROCESSING_SCRIPT
+    self.gtm_postprocessing_script = bid2x_var.GTM_POSTPROCESSING_SCRIPT
     self.value_adjustment_column_name = (
         bid2x_var.GTMColumns.VALUE_ADJUSTMENT.value
     )
@@ -133,6 +137,8 @@ class Bid2xGTM(Platform):
         f'trace: {self.trace}\n'
         f'gtm_value_adjustment_tab: {self.value_adjustment_tab_name}\n'
         f'gtm_floodlight_list: {self.gtm_floodlight_list}\n'
+        f'gtm_preprocessing_script: {self.gtm_preprocessing_script}\n'
+        f'gtm_postprocessing_script: {self.gtm_postprocessing_script}\n'
         f'gtm_cond_var_1: {self.gtm_cond_var_1}\n'
         f'gtm_cond_var_2: {self.gtm_cond_var_2}\n'
         'value_adjustment_column_name: '
@@ -254,6 +260,7 @@ class Bid2xGTM(Platform):
 
     # Set the header part of the function for GTM.
     js_function_string_start = 'function() {\n'
+    js_function_string_start += self.gtm_preprocessing_script + '\n'
     js_function_string_start += 'var conversion_value = 0.0;\n'
 
     fl_iter = 0
@@ -281,9 +288,10 @@ class Bid2xGTM(Platform):
 
       js_function_string_start += f'{fl_clause_prefix}if ( {conditional} ) '
       js_function_string_start += '{\n'
-      js_function_string_start += '  conversion_value = {{'
+      js_function_string_start += '  conversion_value = parseFloat('
+      js_function_string_start += '{{'
       js_function_string_start += f'{floodlight_obj.get("total_var")}'
-      js_function_string_start += '}};\n'
+      js_function_string_start += '}});\n'
 
       # Create the repeating part of the function string by
       # starting with a blank string.
@@ -342,7 +350,8 @@ class Bid2xGTM(Platform):
       # End of floodlight loop.
 
     # Define the end of the function.
-    js_function_string_end = ' return conversion_value; }'
+    js_function_string_end = self.gtm_postprocessing_script + '\n'
+    js_function_string_end += ' return conversion_value; }'
 
     # Assemble the JavaScript function.
     js_function_string = (js_function_string_start + js_function_string_end)
@@ -568,7 +577,11 @@ class Bid2xGTM(Platform):
 
     self.gtm_cond_var_1 = source['gtm_cond_var_1']
     self.gtm_cond_var_2 = source['gtm_cond_var_2']
+
     self.gtm_floodlight_list = source['gtm_floodlight_list']
+    self.gtm_preprocessing_script = source['gtm_preprocessing_script']
+    self.gtm_postprocessing_script = source['gtm_postprocessing_script']
+
     self.value_adjustment_column_name = source['value_adjustment_column_name']
     self.index_factor_column_name = source['index_factor_column_name']
     self.index_low_column_name = source['index_low_column_name']

@@ -66,6 +66,8 @@ GTM_INDEX_FILENAME = 'Test'
 GTM_INDEX_TAB = 'index_file'
 GTM_VALUE_ADJUSTMENT_TAB = 'value_adjustment'
 GTM_STATUS_TAB = 'JS_Scripts'
+GTM_PREPROCESSING_SCRIPT = ''
+GTM_POSTPROCESSING_SCRIPT = ''
 
 # DV360 variables.
 # Define action variable defaults.

@@ -41,6 +41,8 @@
     "gtm_index_filename": "Test_bid2Load",
     "gtm_index_tab": "index_file",
     "gtm_value_adjustment_tab_name": "value_adjustment",
+    "gtm_preprocessing_script": "var customPageName = {{Custom - pageName}};",
+    "gtm_postprocessing_script": "",
     "gtm_floodlight_list": [
       {
         "name": "Floodlight_1",
