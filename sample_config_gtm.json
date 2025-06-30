@@ -38,27 +38,23 @@
     "gtm_container_id": 8888888,
     "gtm_workspace_id": 1,
     "gtm_variable_id": 1,
-    "gtm_index_filename": "Test_bid2Load",
-    "gtm_index_tab": "index_file",
-    "gtm_value_adjustment_tab_name": "value_adjustment",
     "gtm_preprocessing_script": "var customPageName = {{Custom - pageName}};",
     "gtm_postprocessing_script": "",
     "gtm_floodlight_list": [
       {
-        "name": "Floodlight_1",
-        "condition": "{{Event}} == 'Event_name_1'",
+        "floodlight_name": "Floodlight_1",
+        "floodlight_condition": "{{Event}} == 'Event_name_1'",
+        "per_row_condition": "{{getVariable1_DL}} == '#getVar1_Sheet#' && {{getVariable2_DL}} == '#getVar2_Sheet#'",
         "total_var": "conversion_var_default_value_1"
       },
       {
-        "name": "Floodlight_2",
-        "condition": "customPageName.toLowerCase().includes('shopping-tools') || customPageName.toLowerCase().includes('configurator')",
+        "floodlight_name": "Floodlight_2",
+        "floodlight_condition": "customPageName.toLowerCase().includes('shopping-tools') || customPageName.toLowerCase().includes('configurator')",
+        "per_row_condition": "({{getVariable1_DL}} == '#getVar1_Sheet#' && {{getVariable2_DL}} == '#getVar2_Sheet#') || {{getVariable3_DL}} == '#getVar3_Sheet#'",
         "total_var": "conversion_var_default_value_2"
       }
   ],
-    "gtm_cond_var_1": "Pixel-item-one",
-    "gtm_cond_var_2": "Pixel-item-two",
-    "value_adjustment_column_name": "VALUE_ADJUSTMENT",
-    "index_factor_column_name": "INDEX_FACTOR",
+    "value_adjustment_column_name": "Index",
     "index_low_column_name": "INDEX_LOW",
     "index_high_column_name": "INDEX_HIGH",
     "zones_to_process": "GTM_T1",

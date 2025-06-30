@@ -22,6 +22,7 @@
 """
 
 import datetime
+import re
 from typing import Any
 
 from bid2x_gtm_model import Bid2xGTMModel
@@ -29,6 +30,43 @@ from bid2x_platform import Platform
 from bid2x_spreadsheet import Bid2xSpreadsheet
 import bid2x_var
 import pandas as pd
+
+
+class GTMFloodlight:
+  """GTM Floodlight object.
+
+  Attributes:
+      floodlight_name(str): Name of the floodlight.
+      per_row_condition(str): Condition to be met for the row.
+      total_var(str): Variable name for the total value.
+      floodlight_condition(str): Condition to identify the floodlight.
+  """
+  floodlight_name: str
+  per_row_condition: str
+  total_var: str
+  floodlight_condition: str
+
+  def __init__(
+      self,
+      floodlight_name: str,
+      per_row_condition: str,
+      total_var: str,
+      floodlight_condition: str | None = None,
+  ) -> None:
+    self.floodlight_name = floodlight_name
+    self.per_row_condition = per_row_condition
+    self.total_var = total_var
+    self.floodlight_condition = floodlight_condition
+
+  def __str__(self) -> str:
+    return_str = (
+        f'floodlight_name: {self.floodlight_name}\n'
+        f'per_row_condition: {self.per_row_condition}\n'
+        f'total_var: {self.total_var}\n'
+        f'floodlight_condition: {self.floodlight_condition}\n'
+    )
+
+    return return_str
 
 
 class Bid2xGTM(Platform):
@@ -48,10 +86,6 @@ class Bid2xGTM(Platform):
       variable_id(str): GTM variable id of the script.
 
   Methods:
-      mapping_data(self, input_df, value_adjustment_df):
-          Walks the passed dataframe, compares the INDEX_FACTOR
-          column against predefined values and sets a value
-          adjustment.
       print_dataframe(self, input_df):
           Converts a dataframe to a string and prints it to stdout.
       read_sheets_data(self):
@@ -77,18 +111,12 @@ class Bid2xGTM(Platform):
 
   debug: bool = False
   trace: bool = False
-
-  gtm_floodlight_list: list[str]
+  gtm_floodlight_list: list[GTMFloodlight]
   gtm_preprocessing_script: str
   gtm_postprocessing_script: str
-  gtm_cond_var_1: str
-  gtm_cond_var_2: str
   value_adjustment_column_name: str
-  value_adjustment_tab_name: str
-  index_factor_column_name: str
   index_low_column_name: str
   index_high_column_name: str
-
   action_update_scripts: bool
   action_test: bool
   zones_to_process: str  # Zones involved in the bidding script.
@@ -96,19 +124,12 @@ class Bid2xGTM(Platform):
   def __init__(self, sheet: Bid2xSpreadsheet, debug: bool) -> None:
     self.sheet = sheet
     self.zone_array = []
-    self.index_filename = 'test_filename'
-    self.index_tab_name = 'test_tab'
     self.value_adjustment_tab_name = 'value_adjustment_tab_name'
     self.debug = debug
     self.trace = False
-
     self.action_update_scripts = False
     self.action_test = True
-
-    self.gtm_cond_gtm_var_1 = bid2x_var.GTMColumns.GTM_VAR_1.value
-    self.gtm_cond_gtm_var_2 = bid2x_var.GTMColumns.GTM_VAR_2.value
-
-    self.gtm_floodlight_list = bid2x_var.GTMColumns.GTM_FLOODLIGHT_LIST
+    self.gtm_floodlight_list = bid2x_var.GTM_FLOODLIGHT_LIST
     self.gtm_preprocessing_script = bid2x_var.GTM_PREPROCESSING_SCRIPT
     self.gtm_postprocessing_script = bid2x_var.GTM_POSTPROCESSING_SCRIPT
     self.value_adjustment_column_name = (
@@ -129,21 +150,16 @@ class Bid2xGTM(Platform):
         A formatted string containing a formatted list of object properties.
     """
     return_str = (
-        f'index_filename: {self.index_filename}\n'
-        f'index_tab_name: {self.index_tab_name}\n'
         'value_adjustment_tab_name: '
         f'{self.value_adjustment_tab_name}\n'
         f'debug: {self.debug}\n'
         f'trace: {self.trace}\n'
-        f'gtm_value_adjustment_tab: {self.value_adjustment_tab_name}\n'
-        f'gtm_floodlight_list: {self.gtm_floodlight_list}\n'
+        '----------------------\n'
+        f'gtm_floodlight_list:\n{self.gtm_floodlight_list}\n'
+        '----------------------\n'
         f'gtm_preprocessing_script: {self.gtm_preprocessing_script}\n'
         f'gtm_postprocessing_script: {self.gtm_postprocessing_script}\n'
-        f'gtm_cond_var_1: {self.gtm_cond_var_1}\n'
-        f'gtm_cond_var_2: {self.gtm_cond_var_2}\n'
-        'value_adjustment_column_name: '
         f'{self.value_adjustment_column_name}\n'
-        f'index_factor_column_name: {self.index_factor_column_name}\n'
         f'index_low_column_name: {self.index_low_column_name}\n'
         f'index_high_column_name: {self.index_high_column_name}\n'
         f'action_update_scripts: {self.action_update_scripts}\n'
@@ -156,52 +172,6 @@ class Bid2xGTM(Platform):
       return_str += str(zone) + '\n----------------------\n'
 
     return return_str
-
-  def mapping_data(
-      self, input_df: pd.DataFrame, value_adjustment_df: pd.DataFrame
-  ) -> pd.DataFrame:
-    """Walks dataframe and sets a value adjustment.
-
-    Args:
-      input_df: dataframe from loading client supplied index file.
-      value_adjustment_df: dataframe from loading client supplied value
-        adjustment file.
-
-    Returns:
-      An updated dataframe now with a value_adjustment column of
-      float numbers.
-    """
-
-    # Reads list of range and value adjustments per sheet.
-    df = input_df.reset_index()  # make sure indexes pair with # of rows.
-    values_df = value_adjustment_df.reset_index()
-
-    df[self.value_adjustment_column_name] = (
-        1.0  # set default calculated value to 1.0.
-    )
-
-    # Iterates through all rows from the index tab's INDEX_FACTOR column
-    # and compares it against the value_adjustments tab's low and high
-    # index values in each row.  If it finds that the INDEX_FACTOR value
-    # in the row matches one of the bounds of the low and high index
-    # values, it will replace the value_adjustment column for the index
-    # file's current row with the new bid multiplier.
-    for i_index, i_row in df.iterrows():
-      for row in values_df.iterrows():
-        if (
-            i_row[self.index_factor_column_name
-                 ] <= row[1][self.index_high_column_name]
-            and i_row[self.index_factor_column_name
-                     ] > row[1][self.index_low_column_name]
-        ):
-
-          df.at[i_index, self.value_adjustment_column_name] = row[1][
-              self.value_adjustment_column_name]
-
-    if self.trace:
-      print('Mapped dataframe:', self.print_dataframe(df))
-
-    return df
 
   def print_dataframe(self, input_df: pd.DataFrame) -> None:
     """Converts a dataframe to a string and prints it to stdout.
@@ -260,8 +230,8 @@ class Bid2xGTM(Platform):
 
     # Set the header part of the function for GTM.
     js_function_string_start = 'function() {\n'
-    js_function_string_start += self.gtm_preprocessing_script + '\n'
     js_function_string_start += 'var conversion_value = 0.0;\n'
+    js_function_string_start += self.gtm_preprocessing_script + '\n'
 
     fl_iter = 0
 
@@ -274,23 +244,29 @@ class Bid2xGTM(Platform):
       else:
         fl_clause_prefix = ''
 
-      # The dictionary for the gtm_floodlight_list can contain 'name',
-      # 'total_var', and optionally 'condition'.  If condition exists
-      # then use it as the conditional statement in the JavaScript fn
-      # being generated.  If it doesn't exist then assume the name of
-      # the event will be the same as the given name of the
-      # floodlight.
-      if 'condition' in floodlight_obj:
-        conditional = floodlight_obj.get('condition')
+      # The dictionary for the gtm_floodlight_list contains a
+      # 'floodlight_name', 'per_row_condition', 'total_var', and
+      # optionally a 'floodlight_condition'.
+      # If floodlight_condition exists then use it as the conditional statement
+      # to identify a specific floodlight in the JavaScript fn being generated.
+      # If it doesn't exist then assume the name of the {{Event}} will be the
+      # same as the given name of the floodlight.
+      # if 'floodlight_condition' in floodlight_obj:
+      if floodlight_obj.floodlight_condition:
+        conditional = floodlight_obj.floodlight_condition
       else:
-        floodlight_name = floodlight_obj.get('name')
+        floodlight_name = floodlight_obj.floodlight_name
         conditional = ' {{Event}} == ' + f'"{floodlight_name}" '
 
       js_function_string_start += f'{fl_clause_prefix}if ( {conditional} ) '
       js_function_string_start += '{\n'
+      # Once inside the conditional the very first thing is to assign
+      # conversion_value to the configured total_var.  This ensures
+      # we have a default value for the conversion even if none of the
+      # 'per_row_condition' statements fail to match.
       js_function_string_start += '  conversion_value = parseFloat('
       js_function_string_start += '{{'
-      js_function_string_start += f'{floodlight_obj.get("total_var")}'
+      js_function_string_start += f'{floodlight_obj.total_var}'
       js_function_string_start += '}});\n'
 
       # Create the repeating part of the function string by
@@ -300,54 +276,45 @@ class Bid2xGTM(Platform):
       # Advance the floodlight counter.
       fl_iter = fl_iter + 1
 
-      # Walk the passed dataframe a row at a time.
-      for row_iter, irow in input_df.iterrows():
-        if self.gtm_cond_var_1 in irow.keys().to_list():
-          first_item = irow[self.gtm_cond_var_1]
+      # Extract variables to be used from 'per_row_condition' line.
+      replacement_pattern = re.compile(r'#([^#]+)#')
+
+      def replace_match(match, row_data):
+        # Get the captured group (e.g., 'getRegion')
+        column_name = match.group(1)
+        if column_name in row_data:
+          # Replace with the value from the current row
+          return str(row_data[column_name])
         else:
-          first_item = irow[bid2x_var.GTMColumns.GTM_VAR_1.value]
+          # If column not found, return the original match (e.g., #getRegion#)
+          return match.group(0)
 
-        if self.gtm_cond_var_2 in irow.keys().to_list():
-          second_item = irow[self.gtm_cond_var_2]
+      for row_data in input_df.iterrows():
+        # Define a helper function to perform the replacement for each match
+
+        # Use re.sub with the replacement function
+        # if 'per_row_condition' in floodlight_obj:
+        if floodlight_obj.per_row_condition:
+          new_string = replacement_pattern.sub(
+              lambda match: replace_match(match, row_data),  # pylint: disable=cell-var-from-loop
+              floodlight_obj.per_row_condition
+          )
         else:
-          second_item = irow[bid2x_var.GTMColumns.GTM_VAR_2.value]
+          print('per_row_condition key not defined for this floodlight')
+          exit(-2)
 
-        # The variable 'adjustment' is, at first, the multiplier taken
-        # as directly read from the spreadsheet.
-        adjustment = irow[self.value_adjustment_column_name]
+        # Define the column being referenced for adjustments to
+        # the conversion value.
+        adjustment = row_data[self.value_adjustment_column_name]
 
-        # Pass the read adjustment through hi/lo checks that are held in
-        # system variables
-
-        # If this is the first clause (row 0) there is no 'else'
-        # otherwise this is the continuation of an if-statement
-        # and use 'else ' to continue the statement.
-        if row_iter > 0:
-          clause_prefix = 'else '
-        else:
-          clause_prefix = ''
-
-        js_function_string_middle += f'  {clause_prefix}if ('
-        js_function_string_middle += '{{'
-        js_function_string_middle += f'{self.gtm_cond_var_1}'
-        js_function_string_middle += '}} == '
-        js_function_string_middle += f"'{first_item}' && "
-        js_function_string_middle += '{{'
-        js_function_string_middle += f'{self.gtm_cond_var_2}'
-        js_function_string_middle += '}} == '
-        js_function_string_middle += f"'{second_item}') "
-        js_function_string_middle += '{\n'
-        js_function_string_middle += (
-            '    conversion_value *= '
-        )
-        js_function_string_middle += f'{adjustment}; '  # This is the index
-                                                        # adjustment/multiplier
-                                                        # to the default conv.
-                                                        # value.
+        js_function_string_middle += '    if (' + new_string + ' ) {\n'
+        js_function_string_middle += '      conversion_value *= '
+        # This is the index adjustment/multiplier
+        # to the default conv. value.
+        js_function_string_middle += f'{adjustment}; '
         js_function_string_middle += '}\n'
 
       js_function_string_start += js_function_string_middle + '}\n'
-      # End of floodlight loop.
 
     # Define the end of the function.
     js_function_string_end = self.gtm_postprocessing_script + '\n'
@@ -411,7 +378,8 @@ class Bid2xGTM(Platform):
     else:
       return False
 
-    # Build the path for getting / updating the variable using the passed args.
+    # Build the path for getting / updating the variable
+    # using the passed args.
     var_req = (
         f'accounts/{account_id}/containers/{container_id}/'
         f'workspaces/{workspace_id}/variables/{zone.variable_id}'
@@ -572,21 +540,14 @@ class Bid2xGTM(Platform):
     """
     self.debug = source['debug']
     self.trace = source['trace']
-
-    self.value_adjustment_tab_name = source['gtm_value_adjustment_tab_name']
-
-    self.gtm_cond_var_1 = source['gtm_cond_var_1']
-    self.gtm_cond_var_2 = source['gtm_cond_var_2']
-
-    self.gtm_floodlight_list = source['gtm_floodlight_list']
+    self.gtm_floodlight_list = [
+        GTMFloodlight(**item) for item in source['gtm_floodlight_list']
+    ]
     self.gtm_preprocessing_script = source['gtm_preprocessing_script']
     self.gtm_postprocessing_script = source['gtm_postprocessing_script']
-
     self.value_adjustment_column_name = source['value_adjustment_column_name']
-    self.index_factor_column_name = source['index_factor_column_name']
     self.index_low_column_name = source['index_low_column_name']
     self.index_high_column_name = source['index_high_column_name']
-
     self.action_update_scripts = source['action_update_scripts']
     self.action_test = source['action_test']
     self.zones_to_process = source['zones_to_process']
