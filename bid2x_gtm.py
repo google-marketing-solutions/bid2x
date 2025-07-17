@@ -22,14 +22,18 @@
 """
 
 import datetime
+import functools
+import json
 import re
-from typing import Any
+from typing import Any, Sequence
 
 from bid2x_gtm_model import Bid2xGTMModel
 from bid2x_platform import Platform
 from bid2x_spreadsheet import Bid2xSpreadsheet
 import bid2x_var
 import pandas as pd
+
+partial = functools.partial
 
 
 class GTMFloodlight:
@@ -154,19 +158,19 @@ class Bid2xGTM(Platform):
         f'{self.value_adjustment_tab_name}\n'
         f'debug: {self.debug}\n'
         f'trace: {self.trace}\n'
-        '----------------------\n'
-        f'gtm_floodlight_list:\n{self.gtm_floodlight_list}\n'
-        '----------------------\n'
         f'gtm_preprocessing_script: {self.gtm_preprocessing_script}\n'
         f'gtm_postprocessing_script: {self.gtm_postprocessing_script}\n'
-        f'{self.value_adjustment_column_name}\n'
+        f'index_factor_column_name: {self.value_adjustment_column_name}\n'
         f'index_low_column_name: {self.index_low_column_name}\n'
         f'index_high_column_name: {self.index_high_column_name}\n'
         f'action_update_scripts: {self.action_update_scripts}\n'
         f'action_test: {self.action_test}\n'
         '----------------------\n'
-        'Zones\n'
     )
+
+    return_str += 'configured floodlights:\n'
+    for floodlight in self.gtm_floodlight_list:
+      return_str += str(floodlight) + '\n----------------------\n'
 
     for zone in self.zone_array:
       return_str += str(zone) + '\n----------------------\n'
@@ -217,6 +221,176 @@ class Bid2xGTM(Platform):
 
     return index_df
 
+  def generate_multipliers_js(
+      self, df: pd.DataFrame, value_column: str = 'Index', *dimensions: str
+  ):
+    """Generate a JavaScript string representing a nested multipliers object.
+
+    Args:
+        df (pd.DataFrame):  The input DataFrame.
+        value_column (str): The name of the column containing the numeric
+          values.
+        *dimensions (str): Variable number of strings representing the columns
+          to be used as dimensions for nesting the object.
+
+    Returns:
+        str: A JavaScript string defining the 'multipliers' object.
+    """
+
+    if not dimensions:
+      raise ValueError('At least one dimension column must be provided.')
+
+    multipliers = {}
+
+    for _, row in df.iterrows():
+      current_level = multipliers
+      for i, dim in enumerate(dimensions):
+        key = row[dim]
+        if i < len(dimensions) - 1:
+          if key not in current_level:
+            current_level[key] = {}
+          current_level = current_level[key]
+        else:
+          # Round to 9 decimal places for consistency
+          current_level[key] = round(float(row[value_column]), 9)
+
+    # Convert the Python dictionary to a JSON string, then format as JS
+    js_multipliers_str = json.dumps(multipliers, indent=4)
+    return f'  var multipliers = {js_multipliers_str};'
+
+  def generate_get_multiplier_js_function(
+      self, dimensions: Sequence[str]
+  ) -> str:
+    """Generate JavaScript string for the getMultiplier function.
+
+    This version uses generic variable names (var1, var2, etc.) for the
+    function parameters to avoid issues with dimension names containing
+    special characters like hyphens, which are invalid in JS identifiers.
+
+    Args:
+      dimensions (list): A list of strings representing the dimension names.
+                         The number of dimensions determines the number of
+                         arguments for the generated function.
+
+    Returns:
+      str: A JavaScript string defining the 'getMultiplier' function.
+    """
+    if not dimensions:
+      raise ValueError(
+          'At least one dimension must be provided for the function.'
+      )
+
+    # Generate generic parameter names, e.g., ['var1', 'var2', ...]
+    # These are guaranteed to be valid JavaScript identifiers.
+    generic_params = [f'var{i+1}' for i in range(len(dimensions))]
+
+    # Join the generic parameters for the function signature, e.g., "var1, var2"
+    params_str = ', '.join(generic_params)
+
+    # Build the nested lookup logic, mirroring the original's structure.
+    # This creates a chain of checks to safely access nested properties.
+    # e.g., ((multipliers && multipliers[var1]) &&
+    #            (multipliers && multipliers[var1])[var2])
+    final_lookup = 'multipliers'
+    for param in generic_params:
+      # The lookup now uses the safe, generic parameter name as the key.
+      final_lookup = f'({final_lookup} && {final_lookup}[{param}])'
+
+    # Append the fallback value to return if the lookup path is incomplete.
+    final_lookup += ' || 1.0'
+
+    # Construct the final JavaScript function string.
+    js_function = f"""function getMultiplier({params_str}) {{
+  return {final_lookup};
+}}"""
+    return js_function
+
+  # Correct usage with reordered columns, if 'Index' is still the value.
+  # You would need to explicitly tell the function which is the value column,
+  # or ensure 'Index' is always the last.
+  # For example, if you want 'Index' to be the
+  # value column regardless of position:
+  def generate_full_js_code_explicit(self, df, value_col_name='Index'):
+    """Generates JavaScript string, explicitly identifying the value column.
+
+    Args:
+      df (pd.DataFrame): The input DataFrame.
+      value_col_name (str): The name of the column containing the numeric
+        values.
+
+    Returns:
+      str: The complete JavaScript string.
+    """
+    if value_col_name not in df.columns:
+      raise ValueError(
+          f"Value column '{value_col_name}' not found in DataFrame."
+      )
+
+    value_column = value_col_name
+    dimensions = [col for col in df.columns if col != value_col_name]
+
+    multipliers_js = self.generate_multipliers_js(df, value_column, *dimensions)
+    get_multiplier_js = self.generate_get_multiplier_js_function(dimensions)
+
+    return f'{multipliers_js}\n\n{get_multiplier_js}'
+
+  def generate_js_function_call(
+      self, dimensions: Sequence[str],
+      example_values: Sequence[str] | None = None
+  ) -> str:
+    """Generates a JavaScript string that calls the getMultiplier function.
+
+    Args:
+        dimensions (list): A list of strings representing the dimension names
+                            (e.g., ['region', 'model']).
+        example_values (list, optional):  A list of actual values to use in
+                                          the call.
+                                          Must match the order of dimensions.
+                                          If None, uses placeholder strings.
+
+    Returns:
+        str: A JavaScript string demonstrating the function call.
+    """
+    if not dimensions:
+      return (
+          '// No dimensions, so no meaningful call ',
+          'to getMultiplier can be generated.'
+      )
+
+    call_args = []
+    if example_values and len(example_values) == len(dimensions):
+      for val in example_values:
+        # Safely format string arguments with quotes, numbers as-is
+        call_args.append(f"'{val}'" if isinstance(val, str) else str(val))
+    else:
+      # If no example_values or mismatch, use placeholders
+      for dim in dimensions:
+        call_args.append(f'{dim}')  # Placeholder string
+
+    args_string = ', '.join(call_args)
+
+    return f'conversion_value *= getMultiplier({args_string});'
+
+  def replace_match(self, match: re.match, row_data: pd.Series) -> str:
+    """Helper function to perform the replacement for each match.
+
+    Args:
+      match: A re match object.
+      row_data: A pandas row object.
+
+    Returns:
+      The replaced string.
+    """
+    # Get the captured group (e.g., 'getRegion')
+    column_name = match.group(1)
+    if column_name in row_data:
+      # Replace with the value from the current row
+      return str(row_data[column_name])
+    else:
+      # If column not found, return the original
+      # match (e.g., #getRegion#).
+      return match.group(0)
+
   def write_javascript_function(self, input_df: pd.DataFrame) -> str:
     """Creates a string containing a JavaScript function for use in GTM.
 
@@ -228,10 +402,42 @@ class Bid2xGTM(Platform):
         with GTM to be loaded into a variable there.
     """
 
+    # Walk the list of floodlights and see if any of them have a
+    # 'per_row_condition' set to "lookup#...".  If so, set a
+    # var called use_lookup to True which changes the format of
+    # the output JavaScript
+    use_lookup = False
+    parts_after_first = []
+    for floodlight_obj in self.gtm_floodlight_list:
+      # if 'per_row_condition' in floodlight_obj:
+      if hasattr(floodlight_obj, 'per_row_condition'):
+        # Extract first part of 'per_row_condition' & check for
+        # 'lookup' keyword.
+        parts = floodlight_obj.per_row_condition.split('#')
+        if parts[0] == 'lookup':
+          use_lookup = True
+          # If the keyword 'lookup' is first in a hash '#' delimited
+          # list of strings then extract the part AFTER the 'lookup'
+          # keyword and keep the list of strings as they are used
+          # for the calling of the lookup function.  For example,
+          # 'lookup#region#{{getCarModel}}' would use 'region'
+          # and {{getCarModel}} in the list of variables for the
+          # constructed lookup function and table.
+          parts_after_first = parts[1:]
+
     # Set the header part of the function for GTM.
-    js_function_string_start = 'function() {\n'
-    js_function_string_start += 'var conversion_value = 0.0;\n'
-    js_function_string_start += self.gtm_preprocessing_script + '\n'
+    js_function_string_start = []
+    js_function_string_start.append('function() {\n')
+    js_function_string_start.append('  var conversion_value = 0.0;\n')
+    js_function_string_start.append(self.gtm_preprocessing_script + '\n')
+
+    if use_lookup:
+      js_output_explicit = self.generate_full_js_code_explicit(
+          input_df, value_col_name='Index'
+      )
+      js_function_string_start.append('\n')
+      js_function_string_start.append(js_output_explicit)
+      js_function_string_start.append('\n')
 
     fl_iter = 0
 
@@ -251,77 +457,88 @@ class Bid2xGTM(Platform):
       # to identify a specific floodlight in the JavaScript fn being generated.
       # If it doesn't exist then assume the name of the {{Event}} will be the
       # same as the given name of the floodlight.
-      # if 'floodlight_condition' in floodlight_obj:
-      if floodlight_obj.floodlight_condition:
+      if hasattr(floodlight_obj, 'floodlight_condition'):
         conditional = floodlight_obj.floodlight_condition
       else:
         floodlight_name = floodlight_obj.floodlight_name
         conditional = ' {{Event}} == ' + f'"{floodlight_name}" '
 
-      js_function_string_start += f'{fl_clause_prefix}if ( {conditional} ) '
-      js_function_string_start += '{\n'
+      js_function_string_start.append(f'  {fl_clause_prefix}')
+      js_function_string_start.append(f'if ( {conditional} ) ')
+      js_function_string_start.append('{\n')
       # Once inside the conditional the very first thing is to assign
       # conversion_value to the configured total_var.  This ensures
       # we have a default value for the conversion even if none of the
       # 'per_row_condition' statements fail to match.
-      js_function_string_start += '  conversion_value = parseFloat('
-      js_function_string_start += '{{'
-      js_function_string_start += f'{floodlight_obj.total_var}'
-      js_function_string_start += '}});\n'
-
-      # Create the repeating part of the function string by
-      # starting with a blank string.
-      js_function_string_middle = ''
+      js_function_string_start.append('    conversion_value = parseFloat(')
+      js_function_string_start.append('{{')
+      # The default action is to use the total_var as a GTM varaiable to
+      # evaluate in the JavaScript.  If it is not provided then use the
+      # floodlight name.
+      if hasattr(floodlight_obj, 'total_var'):
+        js_function_string_start.append(f'{floodlight_obj.total_var}')
+      else:
+        js_function_string_start.append(f'{floodlight_obj.floodlight_name}')
+      js_function_string_start.append('}});\n')
 
       # Advance the floodlight counter.
       fl_iter = fl_iter + 1
 
-      # Extract variables to be used from 'per_row_condition' line.
-      replacement_pattern = re.compile(r'#([^#]+)#')
+      # Create the repeating part of the function string by
+      # starting with a blank list.
+      js_function_string_middle = []
 
-      def replace_match(match, row_data):
-        # Get the captured group (e.g., 'getRegion')
-        column_name = match.group(1)
-        if column_name in row_data:
-          # Replace with the value from the current row
-          return str(row_data[column_name])
-        else:
-          # If column not found, return the original match (e.g., #getRegion#)
-          return match.group(0)
+      # If NOT using a lookup table then use the 'per_row_condition' as
+      # the mechanism by which to write the innder conditional.
+      if not use_lookup:
+        # Extract variables to be used from 'per_row_condition' line.
+        replacement_pattern = re.compile(r'#([^#]+)#')
 
-      for row_data in input_df.iterrows():
-        # Define a helper function to perform the replacement for each match
+        for _, row_data in input_df.iterrows():
+          # Create a partial function with row_data "frozen"
+          replace_match_partial = partial(self.replace_match, row_data=row_data)
+          if hasattr(floodlight_obj, 'per_row_condition'):
+            substituted_condition = replacement_pattern.sub(
+                replace_match_partial, floodlight_obj.per_row_condition
+            )
+          else:
+            print(
+                'per_row_condition key not defined for this ', 'floodlight: ',
+                floodlight_obj, ' cannot continue.'
+            )
+            exit(-2)
 
-        # Use re.sub with the replacement function
-        # if 'per_row_condition' in floodlight_obj:
-        if floodlight_obj.per_row_condition:
-          new_string = replacement_pattern.sub(
-              lambda match: replace_match(match, row_data),  # pylint: disable=cell-var-from-loop
-              floodlight_obj.per_row_condition
-          )
-        else:
-          print('per_row_condition key not defined for this floodlight')
-          exit(-2)
+          # Define the column being referenced for adjustments to
+          # the conversion value.
+          adjustment = row_data[self.value_adjustment_column_name]
 
-        # Define the column being referenced for adjustments to
-        # the conversion value.
-        adjustment = row_data[self.value_adjustment_column_name]
+          js_function_string_middle.append('    if (')
+          js_function_string_middle.append(substituted_condition)
+          js_function_string_middle.append(' ) {\n')
+          js_function_string_middle.append('      conversion_value *= ')
+          # This is the index adjustment/multiplier
+          # to the default conv. value.
+          js_function_string_middle.append(f'{adjustment}; ')
+          js_function_string_middle.append('  }\n')
 
-        js_function_string_middle += '    if (' + new_string + ' ) {\n'
-        js_function_string_middle += '      conversion_value *= '
-        # This is the index adjustment/multiplier
-        # to the default conv. value.
-        js_function_string_middle += f'{adjustment}; '
-        js_function_string_middle += '}\n'
+      # Last statement in floodlight loop - append all from this iteration
+      # of the loop to the start start list.
+      js_function_string_start.append(''.join(js_function_string_middle))
+      js_function_string_start.append('  }\n')
 
-      js_function_string_start += js_function_string_middle + '}\n'
+    # Define the end of the JavaScript function.
+    if use_lookup:
+      js_call = self.generate_js_function_call(parts_after_first)
+      js_function_string_end = '  ' + js_call
+    else:
+      js_function_string_end = ''
 
-    # Define the end of the function.
-    js_function_string_end = self.gtm_postprocessing_script + '\n'
-    js_function_string_end += ' return conversion_value; }'
+    js_function_string_end += self.gtm_postprocessing_script + '\n'
+    js_function_string_end += '  return conversion_value;\n}'
 
-    # Assemble the JavaScript function.
-    js_function_string = (js_function_string_start + js_function_string_end)
+    # Assemble the JavaScript function - join the start to the end
+    js_function_string = ''.join(js_function_string_start)
+    js_function_string += js_function_string_end
 
     # Return the finalized JavaScript function for use in GTM.
     return js_function_string
@@ -508,7 +725,8 @@ class Bid2xGTM(Platform):
       )
 
       if self.debug:
-        print(f'Generated JS function returned: {js_function}')
+        print('Generated JS function returned:')
+        print(js_function)
 
       # If there's a good service and a good function and this
       # is NOT a test then update the GTM variable.
@@ -538,16 +756,25 @@ class Bid2xGTM(Platform):
     Returns:
       None.
     """
-    self.debug = source['debug']
-    self.trace = source['trace']
+    attributes_to_copy = [
+        'debug',
+        'trace',
+        'gtm_preprocessing_script',
+        'gtm_postprocessing_script',
+        'value_adjustment_column_name',
+        'index_low_column_name',
+        'index_high_column_name',
+        'action_update_scripts',
+        'action_test',
+        'zones_to_process',
+    ]
+
+    for attr in attributes_to_copy:
+      if attr in source:
+        setattr(self, attr, source[attr])
+
     self.gtm_floodlight_list = [
         GTMFloodlight(**item) for item in source['gtm_floodlight_list']
     ]
-    self.gtm_preprocessing_script = source['gtm_preprocessing_script']
-    self.gtm_postprocessing_script = source['gtm_postprocessing_script']
-    self.value_adjustment_column_name = source['value_adjustment_column_name']
-    self.index_low_column_name = source['index_low_column_name']
-    self.index_high_column_name = source['index_high_column_name']
-    self.action_update_scripts = source['action_update_scripts']
-    self.action_test = source['action_test']
-    self.zones_to_process = source['zones_to_process']
+
+    return
