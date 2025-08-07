@@ -3,43 +3,58 @@
  * budget2x for Google Ads
  * =============================================================================
  *
- * Description:
- * This script updates campaign daily budgets based on data from a Google Sheet.
- * It uses a master control tab ("KeySheet") to determine which sets of campaigns
- * to update. This allows for managing budgets across multiple accounts or logical
- * groups from a single spreadsheet, specifically handling campaigns located
- * within different sub-MCC accounts accessible from a parent MCC.
+ *  Copyright 2025 Google LLC
  *
- * This code is expected to be loaded into the Ads Script portion of Google Ads
- * for a manager or sub-manager account of multiple MCCs. Look for the scripts
- * under Tools-->Bulk Actions-->Scripts. Make a new script and cut and paste
- * this code into that location.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *
- * This code uses an associated Google Sheet.
- * Instructions for the Google Sheet:
- * 1. Set the SPREADSHEET_URL variable below to the URL of your Google Sheet.
- * 2. Create a tab named "KeySheet" or ensure there is a "KeySheet" tab.
- * 3. In "KeySheet", create the following headers in the first row:
- * - Column A: Zone Name (e.g., "North America Campaigns")
- * - Column B: MCC (The account ID of the sub-MCC where campaigns reside)
- * - Column C: Tab Name (The exact name of the tab with budget data)
- * - Column D: Status (Set to "On" to process this entire tab/zone)
- * - Column E: Reference (The starting cell of the data, e.g., "B5")
- * 4. For each data tab specified in "KeySheet":
- * - Ensure the campaign IDs are in the column specified by the "Reference".
- * - Ensure the corresponding daily budgets are in the column immediately
- * to the right of the campaign IDs.
- * - Ensure a status column is immediately to the right of the budget column.
- * Set this status to "On" to update the budget for that specific campaign row.
- * 5. Ensure that the Google Sheet is shared as 'Viewer' with the person /
- * entity that activates the script within Google Ads to ensure that the
- * script has the rights to read the spreadsheet.
+ *   https://www.apache.org/licenses/LICENSE-2.0
  *
- * There is a sample budget2x Google Sheet here:
- * https://docs.google.com/sheets/d/1PIxTrwMc3QBhv_1vbjt4B-cNaD7MucmHWk-gzQhhjRA/edit
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
  *
- * @author Mark D. Oliver @mdoliver
- * @version 1.3 (MCC support fixed + PMAX campaigns)
+ *  Description:
+ *  This script updates campaign daily budgets based on data from a Google
+ *  Sheet.  It uses a master control tab ("KeySheet") to determine which sets of
+ *  campaigns to update. This allows for managing budgets across multiple
+ *  accounts or logical groups from a single spreadsheet, specifically handling
+ *  campaigns located within different sub-MCC accounts accessible from a
+ *  parent MCC.
+ *
+ *  This code is expected to be loaded into the Ads Script portion of Google Ads
+ *  for a manager or sub-manager account of multiple MCCs. Look for the scripts
+ *  under Tools-->Bulk Actions-->Scripts. Make a new script and cut and paste
+ *  this code into that location.
+ *
+ *  This code uses an associated Google Sheet.
+ *  Instructions for the Google Sheet:
+ *    1. Set the SPREADSHEET_URL variable below to the URL of your Google Sheet.
+ *    2. Create a tab named "KeySheet" or ensure there is a "KeySheet" tab.
+ *    3. In "KeySheet", create the following headers in the first row:
+ *      - Column A: Zone Name (e.g., "North America Campaigns")
+ *      - Column B: MCC (The account ID of the sub-MCC where campaigns reside)
+ *      - Column C: Tab Name (The exact name of the tab with budget data)
+ *      - Column D: Status (Set to "On" to process this entire tab/zone)
+ *      - Column E: Reference (The starting cell of the data, e.g., "B5")
+ *    4. For each data tab specified in "KeySheet":
+ *      - Ensure the campaign IDs are in the column specified by the "Reference".
+ *      - Ensure the corresponding daily budgets are in the column immediately
+ *      to the right of the campaign IDs.
+ *      - Ensure a status column is immediately to the right of the budget column.
+ *      Set this status to "On" to update the budget for that specific campaign row.
+ *    5. Ensure that the Google Sheet is shared as 'Viewer' with the person /
+ *      entity that activates the script within Google Ads to ensure that the
+ *      script has the rights to read the spreadsheet.
+ *
+ *  There is a sample budget2x Google Sheet here:
+ *  https://docs.google.com/sheets/d/1PIxTrwMc3QBhv_1vbjt4B-cNaD7MucmHWk-gzQhhjRA/edit
+ *
+ *  @author Mark D. Oliver @mdoliver
+ *  @version 1.3 (MCC support fixed + PMAX campaigns)
  */
 // TODO: Replace with your copy of the control sheet for budget2x.
 const SPREADSHEET_URL =
