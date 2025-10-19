@@ -87,7 +87,7 @@ Program](https://bughunters.google.com/open-source-security).
 
 [Installation script](#installation-script)
 
-- [Installation for DV360 and SA/GTM deployments](#installation-for-dv360-and-sagt-deployments)
+- [Installation for DV360 and SA/GTM deployments](#installation-for-dv360-and-sagtm-deployments)
 - [Installer Prerequisites](#installer-prerequisites)
 - [Installer User-Definable Parameters](#installer-user-definable-parameters)
 - [Main Project Parameters](#main-project-parameters)
