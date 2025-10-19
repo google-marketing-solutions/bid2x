@@ -61,7 +61,7 @@ Program](https://bughunters.google.com/open-source-security).
 - [SA360 Sample Compact JavaScript Output](#sa360-sample-compact-javascript-output)
 - [budget2x Configuration](#budget2x-configuration)
 
-[Configuration File Reference for DV360 and SA/GTM](#config-file-ref)
+[Configuration File Reference for DV360 and SA/GTM](#configuration-file-reference-for-dv360-and-sagtm)
 
 - [Top level configuration items](#top-level-configuration-items)
 - [gtm_floodlight_list items](#gtm_floodlight_list-items)
@@ -1078,7 +1078,7 @@ The only real configuration for the budget2x script is to modify the value of
 SPREADSHEET\_URL near the top of the file to match the URL of the Google Sheet
 you are using BEFORE you deploy the script.
     
-## Configuration File Reference for DV360 and SA/GTM {#config-file-ref}
+## Configuration File Reference for DV360 and SA/GTM
  
 ### Top level configuration items
 
