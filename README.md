@@ -16,28 +16,9 @@ This is not an officially supported Google product. This project is not
 eligible for the [Google Open Source Software Vulnerability Rewards
 Program](https://bughunters.google.com/open-source-security).
 
-<!--
-disableFinding("bidx2")
-disableFinding("budget2x")
-disableFinding("bid2inventory")
-disableFinding("bid2index")
-disableFinding("artifactregistry")
-disableFinding("displayvideo")
-disableFinding("PubSub")
--->
-
 # gTech Ads: bid2x Technical Implementation Guide
 
-| Author(s) | [Mark Oliver](mailto:mdoliver@google.com) |  |
-| :---- | :---- | ----- |
-| **Stakeholder(s)** | \[[Andrew Chan](mailto:andrewlfchan@google.com), [Joey Thompson](mailto:joeythompson@google.com) \] |  |
-| **Add’l Reader(s)** | Peer \[ \], Manager \[ \] |  |
-| **Status** | \[ Draft | **In review** | Working Copy | Complete \] |  |
-| **Last Updated** | **2025-07-23** |  |
-| **Bug Assigned** |  |  |
-| **Abstract** | This file gives a detailed description on preparing for a bid2x deployment, how to use the config file(s), and how to install it in a GCP environment. Use of the budget2x script for Google Ads is also covered. |  |
-
-## Table of Contents {#table-of-contents}
+## Table of Contents
 
 [Table of Contents](#table-of-contents)
 
@@ -59,54 +40,54 @@ disableFinding("PubSub")
 
 [Command Line Arguments](#command-line-arguments)
 
-- [General Usage](#command-line-general-usage)
-- [On/Off Toggle Arguments](#command-line-onoff)
-- [Numeric Value Arguments](#command-line-numeric-value)
-- [Name and File Path Arguments](#command-line-name-and-path)
+- [General Usage](#general-usage)
+- [On/Off Toggle Arguments](#onoff-toggle-arguments)
+- [Numeric Value Arguments](#numeric-value-arguments)
+- [Name and File Path Arguments](#name-and-file-path-arguments)
 - [Action Arguments](#action-arguments)
 - [Command Line Argument Examples](#command-line-argument-examples)
 
-    - [Example 1: Load configuration from my\_config.json:](#example-1:-load-configuration-from-my_config.json:)
-    - [Example 2: Create a new custom bidding algorithm manually](#example-2:-create-a-new-custom-bidding-algorithm-manually)
-    - [Example 3: List custom bidding algos under a given advertiser id](#example-3:-list-custom-bidding-algos-under-a-given-advertiser-id)
+    - [Example 1: Load configuration from my_config.json](#example-1-load-configuration-from-my_configjson)
+    - [Example 2: Create a new custom bidding algorithm manually](#example-2-create-a-new-custom-bidding-algorithm-manually)
+    - [Example 3: List custom bidding algos under a given advertiser id](#example-3-list-custom-bidding-algos-under-a-given-advertiser-id)
 
 [Configuration File Examples](#configuration-file-examples)
 
 - [DV360 Configuration Sample and Discussion](#dv360-configuration-sample-and-discussion)
-- [SA360/GTM Configuration Sample and Discussion](#sa360/gtm-configuration-sample-and-discussion)
+- [SA360 and GTM Configuration Sample and Discussion](#sa360-and-gtm-configuration-sample-and-discussion)
 - [SA360 Sample Configuration for lengthy output](#sa360-sample-configuration-for-lengthy-output)
 - [SA360 Sample Lengthy JavaScript Output](#sa360-sample-lengthy-javascript-output)
 - [SA360 Sample Configuration for compact output](#sa360-sample-configuration-for-compact-output)
 - [SA360 Sample Compact JavaScript Output](#sa360-sample-compact-javascript-output)
 - [budget2x Configuration](#budget2x-configuration)
 
-[Configuration File Reference (DV360 & SA/GTM)](#configuration-file-reference)
+[Configuration File Reference for DV360 and SA/GTM](#configuration-file-reference-for-dv360-and-sagtm)
 
-- [Top level configuration items:](#top-level-configuration-items:)
-- [gtm\_floodlight\_list items:](#gtm_floodlight_list-items:)
-- [Action items:](#action-items:)
-- [Sheet configuration items:](#sheet-configuration-items:)
-- [Zone\_array configuration items](#zone_array-configuration-items)
-    - [For DV360 campaigns / zones](#for-dv360-campaigns-/-zones)
-    - [For GTM/SA360](#for-gtm/sa360)
+- [Top level configuration items](#top-level-configuration-items)
+- [gtm_floodlight_list items](#gtm_floodlight_list-items)
+- [Action items](#action-items)
+- [Sheet configuration items](#sheet-configuration-items)
+- [Zone_array configuration items](#zone_array-configuration-items)
+    - [For DV360 campaigns and zones](#for-dv360-campaigns-and-zones)
+    - [For GTM and SA360](#for-gtm-and-sa360)
 
 [Implementation notes](#implementation-notes)
 
-- [Sheets input / output](#sheets-input-/-output)
+- [Sheets input / output](#sheets-input--output)
 - [Campaigns](#campaigns)
 - [Supported Line Item Types in DV360](#supported-line-item-types-in-dv360)
 - [DV360 Line item Naming](#dv360-line-item-naming)
 - [Frequency of Script Updates](#frequency-of-script-updates)
-    - [DV360 and SA/GTM deployments](#dv360-and-sa/gtm-deployments)
+    - [Frequency for DV360 and SA/GTM deployments](#frequency-for-dv360-and-sagtm-deployments)
     - [budget2x on Google Ads](#budget2x-on-google-ads)
 
 - [Start-up and call from Google Cloud Scheduler](#start-up-and-call-from-google-cloud-scheduler)
-    - [DV360 and SA/GTM deployments](#dv360-and-sa/gtm-deployments-1)
-    - [budget2x on Google Ad](#budget2x-on-google-ads-1)
+    - [Start-up for DV360 and SA/GTM deployments](#start-up-for-dv360-and-sagtm-deployments)
+    - [budget2x on Google Ads](#budget2x-on-google-ads-1)
 
 [Installation script](#installation-script)
 
-- [DV360 and SA/GTM deployments](#dv360-and-sa/gtm-deployments-2)
+- [Installation for DV360 and SA/GTM deployments](#installation-for-dv360-and-sagtm-deployments)
 - [Installer Prerequisites](#installer-prerequisites)
 - [Installer User-Definable Parameters](#installer-user-definable-parameters)
 - [Main Project Parameters](#main-project-parameters)
@@ -118,7 +99,7 @@ disableFinding("PubSub")
 
 [Log File Format](#log-file-format)
 
-## Introduction {#introduction}
+## Introduction
 
 Our customers own a great deal of 1st party data that, traditionally, our
 advertising systems have no access to. Some of this data can be potentially
@@ -147,8 +128,8 @@ number of factors that the customer might have that could have a positive
 impact on the bidding? And those factors, because they're not all known
 *a priori* became the 'x', the factor any given customer would provide in
 an attempt to optimize their bidding. And that's how it became bid2x.
-
-## Getting Access {#getting-access}
+ 
+## Getting Access
 
 At the time of writing this bid2x is available at this location:
 [https://professional-services.googlesource.com/solutions/bid2x/]
@@ -158,31 +139,31 @@ Depending on what group you are in within Google or if you don't have an
 a group to obtain access. Please contact the authors/stakeholders of bid2x to
 see about having your email added to the correct Google Group to obtain access.
 Once you have access you can clone the code using 'git' commands.
-
-## Solution Pieces {#solution-pieces}
+ 
+## Solution Pieces
 
 What's in a bid2x solution? Based on the information provided in the
 introduction your first guess would probably be 'first party data'. But there's
 more, pieces are needed to coordinate passing this information to our
 advertising platforms in an intelligent way. The sections below will break down
 the solution separately for each implementation type.
-
-#### DV360 description {#dv360-description}
+ 
+#### DV360 description
 
 The bid2x solution for DV360 uses Custom Bidding scripts to translate the
 customer's first party data into the desired impact on Line Items within a set
 of Campaigns. The bid2x solution supports multiple campaigns and many line
 items per campaign.
-
-#### SA360/GTM description {#sa360/gtm-description}
+ 
+#### SA360/GTM description
 
 The bid2x solution for SA360 makes use of dynamic HTML tags in Google Tag
 Manager. Like the DV360 solution the implementation for SA360 makes use of 1st
 party data, but instead of communicating this information directly with SA360,
 the solution makes use of Google Tag Manager to indirectly deliver the
 information.
-
-#### budget2x for Google Ads description {#budget2x-for-google-ads-description}
+ 
+#### budget2x for Google Ads description
 
 The bid2x solution for Google Ads, called
 'budget2x'
@@ -207,9 +188,9 @@ and relevant. A sample budget2x spreadsheet to copy is [available here]
 At this point reviewing a few topology diagrams of the solution would be
 beneficial…
 
-## Classic bid2x Topologies {#classic-bid2x-topologies}
+## Classic bid2x Topologies
 
-#### Topology for DV360 deployment {#topology-for-dv360-deployment}
+#### Topology for DV360 deployment
 
 The pieces for a bid2x solution using DV360 are often arranged as follows:
 ![bid2x DV Topology](./img/bid2x_dv_topology.png)
@@ -251,7 +232,7 @@ campaign tabs.
 4. As an alternative to using BQ for first party data input any other connector
 mechanism that Sheets supports is a candidate to bring in data.
 
-#### Topology for SA360/GTM deployment {#topology-for-sa360/gtm-deployment}
+#### Topology for SA360/GTM deployment
 
 The topology for a deployment that targets SA360 involves the use of Google Tag
 Manager to influence SA360. Here's a sample topology:
@@ -291,7 +272,7 @@ run and evaluate to a value based on algorithm and other variables referenced
 in the data layer. The resultant will be available to SA360 as a value to
 optimize on.
 
-#### Topology for Google Ads (budget2x) deployment {#topology-for-google-ads-budget2x}
+#### Topology for Google Ads (budget2x) deployment
 
 The topology of the pieces in a budget2x solution using Google Ads is shown
 in this diagram:
@@ -307,8 +288,8 @@ spreadsheet walks through how to connect multiple child MCCs through a KeySheet
 by deploying the code at a parent or manager MCC level giving the script access
 to multiple child MCCs, each with their own set of campaigns.
 
-## Authentication {#authentication}
-
+## Authentication
+ 
 As can be seen from the topology section there are a number of data flows that
 require explicit access. The bid2x Python app running with GCP runs with the
 identity of a service account that is specific to each deployment. This
@@ -329,7 +310,7 @@ within Google Ads the only authentication of note is to ensure that the person
 that activates the script has the rights to view the Google Sheet being used
 to coordinate the first-party data.
 
-## Command Line Arguments {#command-line-arguments}
+## Command Line Arguments
 
 This section provides a guide to the command-line arguments used by the Bid2X
 script for DV360 and SA360/GTM. There are no command-line arguments for
@@ -343,7 +324,7 @@ The script uses argparse with ArgumentDefaultsHelpFormatter, meaning that if
 you run the script with the \-h or \--help flag, you will see these
 descriptions along with their default values.
 
-### **General Usage** {#command-line-general-usage}
+### **General Usage**
 
 To use these arguments, you would typically run the script from your command
 line like so:
@@ -368,7 +349,7 @@ python main.py -i <option_filename.json>
 Should you choose to employ the command like arguments they are documented
 below, grouped by their function.h
 
-### **On/Off Toggle Arguments** {#command-line-onoff}
+### **On/Off Toggle Arguments**
 
 These arguments are boolean flags. Including the flag sets the option to True.
 If the flag is omitted, it defaults to False (unless the default is explicitly
@@ -401,7 +382,7 @@ itself being present).
   * **Default**: False (as implied by action='store\_true' and typical
   initial state in bid2x\_var.TRACE).
 
-### **Numeric Value Arguments** {#command-line-numeric-value}
+### **Numeric Value Arguments**
 
 These arguments require a numerical value. If not provided, they will use a
 predefined default from the bid2x\_var module.
@@ -434,7 +415,7 @@ predefined default from the bid2x\_var module.
   * **Type**: Integer
   * **Default**: Value from bid2x\_var.PARTNER\_ID. (100000)
 
-### **Name and File Path Arguments** {#command-line-name-and-path}
+### **Name and File Path Arguments**
 
 These arguments expect string values, typically for names, file paths, or
 identifiers. Default values are sourced from the bid2x\_var module.
@@ -485,7 +466,7 @@ identifiers. Default values are sourced from the bid2x\_var module.
   comma-separated list or a specific format expected by the script.
   * **Default**: Value from bid2x\_var.ZONES\_TO\_PROCESS. (c1,c2,c3,c4,c5)
 
-### **Action Arguments** {#action-arguments}
+### **Action Arguments**
 
 These arguments are boolean flags that instruct the script to perform a
 specific action. Only one action should typically be specified per script
@@ -529,13 +510,13 @@ execution.
 This comprehensive list should help in utilizing the BidToX script effectively
 by providing control over its various parameters and actions directly from the
 command line.
-
-## Command Line Argument Examples {#command-line-argument-examples}
+ 
+## Command Line Argument Examples
 
 This section gives some examples of calling the bid2x python script with
 different arguments.
-
-### Example 1: Load configuration from my\_config.json: {#example-1:-load-configuration-from-my_config.json:}
+ 
+### Example 1: Load configuration from my_config.json
 
 #### Command example:
 ```bash
@@ -551,8 +532,8 @@ the two has yet to be verified in ALL calling cases.
 Configuration files can also be loaded from a GCS bucket using the
 gs://\<bucket\>/filename.json syntax when passing the filename to the
 \-i / \--input\_file argument.
-
-### Example 2: Create a new custom bidding algorithm manually {#example-2:-create-a-new-custom-bidding-algorithm-manually}
+ 
+### Example 2: Create a new custom bidding algorithm manually
 
 #### Command example:
 ```bash
@@ -562,7 +543,7 @@ python main.py -p 1234 -a 5678 -na my_algorithm -nd my_algorithm --action_create
 For partner '1234' and advertiser '5678' this command will create a new custom
 bidding algorithm with internal and external name 'my\_algorithm'.
 
-### Example 3: List custom bidding algos under a given advertiser id {#example-3:-list-custom-bidding-algos-under-a-given-advertiser-id}
+### Example 3: List custom bidding algos under a given advertiser id
 
 #### Command example:
 ```bash
@@ -574,10 +555,10 @@ This action command (\-al) is equivalent to \--action\_list\_algos and lists
 all the custom bidding algorithms under advertiser id 5678 for partner id
 1234\. This command is a nice passive manner in which to double check
 connectivity to DV360 from the command line.
-
-## Configuration File Examples {#configuration-file-examples}
-
-### DV360 Configuration Sample and Discussion {#dv360-configuration-sample-and-discussion}
+ 
+## Configuration File Examples
+ 
+### DV360 Configuration Sample and Discussion
 
 Below is a sample configuration file for a DV360 deployment.
 
@@ -737,9 +718,9 @@ action\_update\_scripts set to true.
 * For a **DV** installation the daily run config should have its
 action\_update\_spreadsheet set to true.
 
-### SA360/GTM Configuration Sample and Discussion {#sa360/gtm-configuration-sample-and-discussion}
-
-#### SA360 Sample Configuration for lengthy output {#sa360-sample-configuration-for-lengthy-output}
+### SA360 and GTM Configuration Sample and Discussion
+ 
+#### SA360 Sample Configuration for lengthy output
 
 Below is a sample configuration file for an SA360/GTM deployment.
 
@@ -869,7 +850,7 @@ floodlights defined then this is repeated for each floodlight event.
 | New York | Sports | Allison | 3 | 1.05 |
 | New York | SUV | Robin | 8 | 1.0 |
 
-#### SA360 Sample Lengthy JavaScript Output {#sa360-sample-lengthy-javascript-output}
+#### SA360 Sample Lengthy JavaScript Output
 * The spreadsheet would be read and would create the following JavaScript code
 to update the GTM variable:
 
@@ -960,8 +941,8 @@ for use with bid2x.
 configuration file is executed by the Cloud Scheduler (typically using the
 'weekly run' config) it will generate the function as above and update the
 GTM variable.
-
-#### SA360 Sample Configuration for compact output {#sa360-sample-configuration-for-compact-output}
+ 
+#### SA360 Sample Configuration for compact output
 
 Another way to generate a more compact JavaScript function is to use the
 keyword 'lookup' in the 'per\_row\_condition' section of the
@@ -1033,7 +1014,7 @@ gtm\_floodlight\_list. Here's an example configuration:
   }
 ```
 
-#### SA360 Sample Compact JavaScript Output {#sa360-sample-compact-javascript-output}
+#### SA360 Sample Compact JavaScript Output
 
 * By using the 'lookup' keyword separated from column names using '\#'
 characters you can automatically create a lookup table and an embedded
@@ -1089,17 +1070,17 @@ JavaScript code using a 'multipliers' lookup table:
 
     return conversion_value;
   }
-```
-### Budget2x Configuration {#budget2x-configuration}
+``` 
+### budget2x Configuration
 
 The configuration for budget2x mainly happens in the Google Sheet being used.
 The only real configuration for the budget2x script is to modify the value of
 SPREADSHEET\_URL near the top of the file to match the URL of the Google Sheet
 you are using BEFORE you deploy the script.
-
-## Configuration File Reference (DV360 & SA/GTM) {#configuration-file-reference}
-
-### Top level configuration items: {#top-level-configuration-items:}
+    
+## Configuration File Reference for DV360 and SA/GTM
+ 
+### Top level configuration items
 
 The top level configuration for the JSON file are those items contained in the
 top level set of curly braces ({ }). These values are typically system-wide
@@ -1133,7 +1114,7 @@ settings.
 | gtm\_preprocessing\_script | string | A string containing JavaScript code to be placed as-is inside the generated function just after the function starts. It usually contains convenience assignments so that other parts of the code can use them. | "gtm\_preprocessing\_script": "var customPageName \= {{Custom \- pageName}};\\nvar event \= {{Event}};\\nvar region \= {{getRegion}}", | Any string that evaluates to legal JavaScript code. Probably not a good idea to put your own 'return' statement in here. 🤔 Carriage return characters "\\n" can be used to produce better looking output. | "" (empty string) |
 | gtm\_postprocessing\_script | string | A string containing code to be inserted just before the generated function return statement; just in case something needs to be adjusted right before return. | "gtm\_postprocessing\_script": "\\nconversion\_value \*= 10;\\n", | Any string that evaluates to legal JavaScript code. | "" (empty string) |
 
-### gtm\_floodlight\_list items: {#gtm_floodlight_list-items:}
+### gtm_floodlight_list items:
 
 When using bid2x for interaction with Search Ads 360 through the use of Google
 Tag Manager, it is imperative to get the configuration of the floodlight
@@ -1149,7 +1130,7 @@ needed.
 | per\_row\_condition | string | (Use case 2 \- be sure to reference use case 1 above). If the per\_row\_condition starts with the string "lookup\#" then it is assumed the user wants to generate a lookup table and the remainder of the string is used to list variable names to use to build a 2 or 3 dimensional lookup table called 'multipliers'. The linked spreadsheet is used to look up the provided column names and build a table using up-to-date data. A smaller if/else if structure is generated for determining the current floodlight and assigning a default value, then a single call to an embedded helper function is used to look up the correct multiplier. In cases where there are large sets of data in the linked spreadsheet, this results in a much more concise JavaScript function. | "per\_row\_condition": "lookup\#getLocation\#getVehicleModel", | For this use case the string MUST start with "lookup\#" and then have a hash delimited list of variables to build the lookup table with. | There is no default, this item is required. |
 | total\_var | string | This variable is the name of the GTM variable that carries the DEFAULT VALUE for this floodlight. This variable will be evaluated using the double curlies {{var name}} and then converted into a floating point number for use with the generated script. It needs to be a number (not a string) because the premise of this entire setup is that first party data will inform us about a multiplier to use with this default value to change its value given the other variables in play (for example, make, model, location, etc.). With a higher or lower value, Search Ads 360 will automatically adjust its bidding to maximize revenue and prioritize those floodlight conditions with higher multipliers. | "total\_var": "Build and Price Lead Revenue" | Any string that matches the name of a variable in GTM that carries the default value of the floodlight. | There is no default, this item is required. |
 
-### Action items: {#action-items:}
+### Action items:
 
 Key to understanding the way bid2x operates is in knowing how the action items
 in the config work. By default ALL action items are false so that bid2x would
@@ -1166,7 +1147,7 @@ true the user is setting how the rest of the file will be interpreted and used.
 | action\_update\_scripts | boolean | This is the main action for the bid2x system whereby is uses the supplied zone info to walk through each zone, connect to the control Google Sheet, compose the updated script and upload the script to either DV or GTM. | "action\_update\_scripts": false, | true or false | false |
 | action\_test | boolean | The 'action\_test' setting allows you to do a dry run of the system writing the script that would be uploaded to DV or GTM to a sheet within Google Sheets. In Google Sheets the tab for this output for DV360 is, by default, named 'CB\_Scripts' and the tab for GTM/SA360 output is named 'JS\_Scripts'. | "action\_test": true | true or false | false |
 
-### Sheet configuration items: {#sheet-configuration-items:}
+### Sheet configuration items:
 
 Whether you're running a DV360 or a GTM/SA360 configuration of bid2x, a
 Google Sheets spreadsheet is used for monitoring and control. The setting of
@@ -1188,9 +1169,9 @@ working effectively.
 | debug | boolean | A debug flag specifically for Google Sheet interactions. Helps to debug Sheet connectivity issues. | "debug": false | true or false | false |
 | trace | boolean | A trace flag that is specific to Google Sheet interactions. | "trace": false | true or false | false |
 
-### Zone\_array configuration items {#zone_array-configuration-items}
+### Zone_array configuration items
 
-#### For DV360 campaigns / zones {#for-dv360-campaigns-/-zones}
+#### For DV360 campaigns and zones
 
 In DV360 deployments the zones in the configuration files are listed under the
 top level item 'zone\_array' and represent campaigns.
@@ -1208,7 +1189,7 @@ top level item 'zone\_array' and represent campaigns.
 | test\_row | integer | An integer specifying which cell ROW will be updated in the Google Sheets status tab (default name 'CB\_Scripts') when a custom bidding script for this zone is generated using a call to ACTION\_TEST or the command line arg \-at / \--action\_test. | "test\_row": 3 | An integer row | The JSON config file should be crafted such that the update rows and columns do not overlap and make sense on the CB\_Scripts sheet. No internal checking done on these values. |
 | test\_col | integer | An integer specifying which cell COLUMN will be updated in the Google Sheets status tab (default name 'CB\_Scripts') when a custom bidding script for this zone is generated using a call to ACTION\_TEST or the command line arg \-at or \--action\_test. | "test\_col": 4 | An integer column (not a letter). Column A \= 1, column B \= 2, etc. | The JSON config file should be crafted such that the update rows and columns do not overlap and make sense on the CB\_Scripts sheet. No internal checking done on these values. |
 
-#### For GTM/SA360 {#for-gtm/sa360}
+#### For GTM and SA360
 
 | Fieldname | Datatype | Description | Example | Legal Values | Default Value |
 | :---- | :---- | :---- | :---- | :---- | :---- |
@@ -1222,9 +1203,9 @@ top level item 'zone\_array' and represent campaigns.
 | test\_row | integer | An integer specifying which cell ROW will be updated in the Google Sheets status tab (default name 'VB\_Scripts') when JavaScript for this zone is generated using a call to ACTION\_TEST or the command line arg \-at / \--action\_test. | "test\_row": 2 | An integer row | The default value is a placeholder and needs to be replaced with a valid value. |
 | test\_col | integer | An integer specifying which cell COLUMN will be updated in the Google Sheets status tab (default name 'VB\_Scripts') when JavaScript for this zone is generated using a call to ACTION\_TEST or the command line arg \-at / \--action\_test. | "test\_col": 8 | An integer column (not a letter). Column A \= 1, column B \= 2, etc. | The default value is a placeholder and needs to be replaced with a valid value. |
 
-## Implementation notes {#implementation-notes}
+## Implementation notes
 
-### Sheets input / output {#sheets-input-/-output}
+### Sheets input / output
 
 When connecting to 1st party company data BigQuery is recommended because it
 allows control over frequency of refresh. Not all connectors provide the same
@@ -1237,7 +1218,7 @@ into a separate tab is a best practice. From there, generate the formulae
 you will need to transform and select the data and get it into the various
 campaign / zone specific tabs.
 
-### Campaigns {#campaigns}
+### Campaigns
 
 For DV360-connected deployment a campaign is your gateway to select the Line
 Items you want to operate on and include in the custom bidding rule. For
@@ -1249,7 +1230,7 @@ SA campaign to write the JavaScript function for within the tag in GTM.
 These deployments use their capaign-specific tab in Sheets for gathering up
 and aligning the 1st party data. (Update this)
 
-### Supported Line Item Types in DV360 {#supported-line-item-types-in-dv360}
+### Supported Line Item Types in DV360
 
 All types of line items in DV360 are supported with the exception of the
 following types:
@@ -1261,7 +1242,7 @@ following types:
 These types of line items are NOT supported due to their inability to have
 bidding adjusted per line item, which is the point of bid2x.
 
-### DV360 Line item Naming {#dv360-line-item-naming}
+### DV360 Line item Naming
 
 For bid2x to work in the smoothest manner it is important to adopt a naming
 convention for your line items that can work to your benefit. The
@@ -1281,8 +1262,8 @@ control Google Sheet but the last line item, that does not contain the
 substring 'bid-to-inventory', does not match and would not be included
 in the solution.
 
-### Frequency of Script Updates {#frequency-of-script-updates}
-#### DV360 and SA/GTM deployments {#dv360-and-sa/gtm-deployments}
+### Frequency of Script Updates
+#### Frequency for DV360 and SA/GTM deployments
 For both DV and SA some time is needed for the uploaded scripts to work in
 an optimal manner.
 
@@ -1310,17 +1291,17 @@ of the real-time data that helped write the script. It is for this reason
 that bid2x is designed to work well for 'weekly realtime' data but not for
 scenarios where minute-by-minute or hourly changes are desired.
 
-#### budget2x on Google Ads {#budget2x-on-google-ads}
+#### budget2x on Google Ads
 
 The design of budget2x is such that daily budgets are impacted and there is
 no learning period like in the DV or SA/GTM models. Therefore, it is
 acceptable to run the script daily or even more frequently as long as your
 1st party data is being updated frequently too and the use-case demands this
 approach.
+ 
+### Start-up and call from Google Cloud Scheduler
 
-### Start-up and call from Google Cloud Scheduler {#start-up-and-call-from-google-cloud-scheduler}
-
-#### DV360 and SA/GTM deployments {#dv360-and-sa/gtm-deployments-1}
+#### Start-up for DV360 and SA/GTM deployments
 
 Due to Cloud Functions becoming deprecated in favour of Cloud Run Jobs, bid2x
 has changed and moved the compute portion of the system. What was previously
@@ -1331,17 +1312,17 @@ from Cloud Scheduler as a type of API call.
 
 Refer to the section detailing the installation script for the details.
 
-#### budget2x on Google Ads {#budget2x-on-google-ads-1}
+#### budget2x on Google Ads
 
 The deployment of the script within Google Ads is via cut and paste of the
 script which is currently less than 300 lines, including all comments. Once
 pasted into place within the scripts section of Google Ads the deployer is
 free to use the 'Preview' function to see the action of the script without
 making any changes.
+ 
+## Installation script
 
-## Installation script {#installation-script}
-
-#### DV360 and SA/GTM deployments {#dv360-and-sa/gtm-deployments-2}
+#### Installation for DV360 and SA/GTM deployments
 
 Core to deploying bid2x is the install script. This is a BASH script that
 utilizes the gcloud command to perform a one-shot install in your client's
@@ -1356,7 +1337,7 @@ The installation script is designed to work within the Cloud Shell
 environment of GCP. It \*may\* work in other environments, but it also
 may not.
 
-### Installer Prerequisites {#installer-prerequisites}
+### Installer Prerequisites
 
 Get access to the deployment environment and ensure you have the right
 permissions to do the following:
@@ -1397,7 +1378,7 @@ permissions to do the following:
 * Make a new Cloud Scheduler event:
   * gcloud scheduler jobs create http \<named job\>
 
-### Installer User-Definable Parameters {#installer-user-definable-parameters}
+### Installer User-Definable Parameters
 
 The top of the installation script file contains around 200 lines of code
 that are expected to be modified by the person doing the installation.
@@ -1551,7 +1532,7 @@ CREATE_SCHEDULER_JOBS=1
 
 A detailed description of each parameter and its use follows:
 
-#### Main Project Parameters {#main-project-parameters}
+#### Main Project Parameters
 
 | PROJECT | Set this to the GCP project name (not the ID) that you are deploying into. If you're not sure what the current project is use the command: gcloud config get-value project  Default: bid2x-deploy-test (don't use the default value) |
 | :---- | :---- |
@@ -1562,13 +1543,13 @@ A detailed description of each parameter and its use follows:
 | DEPOLYMENT\_TYPE | Bid2x deployment type. Can be 'DV' or 'SA'. |
 | QUIET  | Quite mode flag. Use "--quiet" to force quiet mode on the gcloud command, otherwise use "" (empty string) and quite mode will NOT be used with gcloud commands. Warning: running without \--quiet can make some commands interactive and thus require the answering of (Y/N) questions during the install. |
 
-#### Virtual Machine Environment Parameters {#virtual-machine-environment-parameters}
+#### Virtual Machine Environment Parameters
 
 | CPU | Cloud Run Jobs deployment cpu default for bid2x. A single CPU='1' is usually sufficient for bid2x. Default: 1 (as a string) |
 | :---- | :---- |
 | MEMORY | Cloud Run Jobs deployment memory default for bid2x. This number CAN be increased when needed, for example \='1Gi' or \='2Gi'. Some DV trafficking profiles can contain a LARGE number of Line Items in a campaign and a large download of Line Items can exhaust memory (watch the logs). Don't be afraid to increase this number as needed. Default: '512Mi' |
 
-#### Service Account Parameters {#service-account-parameters}
+#### Service Account Parameters
 
 | SERVICE\_ACCOUNT | Service account used for IAM calls and "cloud run jobs deploy" commands. Default: "bid2x-service@\<PROJECT\>.iam.gserviceaccount.com" |
 | :---- | :---- |
@@ -1579,8 +1560,8 @@ configuration. However, there are some deployments where it is desired to
 have a service account that runs the jobs be a more 'locked down' service
 account, capable only of running existing jobs, not able to deploy new jobs
 or make IAM calls. Hence, the discrimination between the two accounts.
-
-#### Cloud Run Job Detail Parameters {#cloud-run-job-detail-parameters}
+ 
+#### Cloud Run Job Detail Parameters
 
 | WEEKLY\_CLOUD\_RUN\_JOB\_NAME | The name given to the Cloud Run Job for the weekly run. This is the name of the Cloud Run job in the UI. Default: bid2x-weekly |
 | :---- | :---- |
@@ -1594,7 +1575,7 @@ or make IAM calls. Hence, the discrimination between the two accounts.
 | DAILY\_SCHEDULER\_JOB\_NAME | The name shown in the Cloud Scheduler UI for this configuration item. Default: "\<DAILY\_CLOUD\_RUN\_JOB\_NAME\>-scheduled-update" |
 | DAILY\_ARGS | The daily config file is usually a JSON with 'action\_update\_spreadsheet' set to true. Default: "-i,${DAILY\_CONFIG}" Example: python main.py \-i sample\_config\_dv.json or python main.py \-i gs://my-project-config/dv\_daily.json |
 
-#### Installation Control Flags {#installation-control-flags}
+#### Installation Control Flags
 
 By default leave all control flags as 1 to run all parts of the installer.
 If you're having some installation issues (it happens) you can adjust the
@@ -1610,7 +1591,7 @@ values to get only portions of the installation to run.
 | DEPLOY\_JOBS | Run the portion of the installer that creates the cloud run job deployment(s). This section collects the code and configuration files, uses cloud build to generate a Docker environment, and deploys. Default: 1 (i.e. run it, use 0 to skip) |
 | CREATE\_SCHEDULER\_JOBS | Run the portion of the installer that creates Cloud Scheduler jobs that call the Cloud Run Job deployments at specific times/dates. Default: 1 (i.e. run it, use 0 to skip) |
 
-### Installation Log file {#installation-log-file}
+### Installation Log file
 
 Every time you run the install.sh script it generates a log file controlled by
 the name LOG\_FILE within the top portion of the script itself. By default
@@ -1625,8 +1606,8 @@ During communications with the bid2x development team the installation logs
 are our mechanism to see what happened if anything goes wrong and are our best
 bet in helping you. So don't forget the installation logs when looking for
 assistance.
-
-#### Log File Format {#log-file-format}
+ 
+#### Log File Format
 
 The format of the installation log file breaks up the install into numbers
 sections separated by indented titleblocks highlighted by characters like
