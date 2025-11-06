@@ -1068,9 +1068,9 @@ qutip==4.7.5 \
     --hash=sha256:cd223ff0f31cef3b08de9d898d959c65a4cd3ef05eec3cf91ee25431285d284d \
     --hash=sha256:d0090d2543fcab58f966387b0553987971c75cc8b7fb269c354e68b023d87f18
     # via sequence
-requests==2.31.0 \
-    --hash=sha256:58cd2187c01e70e6e26505bca751777aa9f2ee0b7f4300988b709f44e013003f \
-    --hash=sha256:942c5a758f98d790eaed1a29cb6eefc7ffb0d1cf7af05c3d2791656dbd6ad1e1
+requests==2.32.4 \
+    --hash=sha256:27babd3cda2a6d50b30443204ee89830707d396671944c998b5975b031ac2b2c \
+    --hash=sha256:27d0316682c8a29834d3264820024b62a36942083d52caf2f14c0591336d3422
     # via
     #   -r requirements.in
     #   dash
