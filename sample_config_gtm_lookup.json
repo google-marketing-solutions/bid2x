@@ -1,0 +1,75 @@
+{
+    "scopes": [
+        "https://www.googleapis.com/auth/tagmanager.edit.containerversions",
+        "https://www.googleapis.com/auth/tagmanager.edit.containers",
+        "https://www.googleapis.com/auth/tagmanager.publish",
+        "https://www.googleapis.com/auth/tagmanager.readonly",
+        "https://www.googleapis.com/auth/tagmanager.delete.containers",
+        "https://www.googleapis.com/auth/spreadsheets"
+    ],
+    "api_name": "tagmanager",
+    "api_version": "v2",
+    "platform_type": "GTM",
+    "sheet": {
+      "sheet_id": "1FqujqXpWSU7tbIjKIRTYKhgguScy4kPBbGjQ2IkoyIw",
+      "sheet_url": "https://docs.google.com/spreadsheets/d/1FqujqXpWSU7tbIjKIRTYKhgguScy4kPBbGjQ2IkoyIw/edit",
+      "json_auth_file": "gtm_auth_file.json",
+      "debug": true
+    },
+    "zone_array": [
+      {
+        "name": "GTM_T1",
+        "account_id": 1234567890,
+        "container_id": 12345678,
+        "workspace_id": 987,
+        "variable_id": 123,
+        "debug": true,
+        "update_row": 3,
+        "update_col": 2,
+        "test_row": 3,
+        "test_col": 4
+      }
+    ],
+    "debug": true,
+    "trace": false,
+    "json_auth_file": "gtm_auth_file.json",
+    "service_account_email": "service_account@project_name.iam.gserviceaccount.com",
+    "gtm_account_id": 1234567890,
+    "gtm_container_id": 12345678,
+    "gtm_workspace_id": 987,
+    "gtm_variable_id": 123,
+    "gtm_preprocessing_script": "var customPageName = {{Custom - pageName}};\nvar event = {{Event}};\nvar region = {{getRegion}}",
+    "gtm_postprocessing_script": "",
+    "gtm_floodlight_list": [
+      {
+        "floodlight_name": "Google Inventory Bid - Floodlight - BidtoX|Build and Price Lead|IM",
+        "floodlight_condition": " event === 'Configurator Lead' && customPageName.includes('summary') ",
+        "per_row_condition": "lookup#region#model",
+        "total_var": "Google Inventory Bid - Revenue - BidtoX|Build and Price Lead|IM"
+      },
+      {
+        "floodlight_name": "Google Inventory Bid - Floodlight - BidtoX|Build Start|IM",
+        "floodlight_condition": " ['toolPageChange', 'page_view', 'gtm.js'].includes(event) && /^shopping-tools\\|configurator.*(exterior|mainstage)$/.test(customPageName) ",
+        "per_row_condition": "lookup#region#model",
+        "total_var": "Google Inventory Bid - Revenue - BidtoX|Build Start|IM"
+      },
+      {
+        "floodlight_name": "Google Inventory Bid - Floodlight - BidtoX|Request a Quote|IM",
+        "floodlight_condition":"customPageName.includes('request-internet-quote') && customPageName.includes('confirmation')",
+        "per_row_condition": "lookup#region#model",
+        "total_var": "Google Inventory Bid - Revenue - BidtoX|Request a Quote|IM"
+      },
+      {
+        "floodlight_name": "Google Inventory Bid - Floodlight - BidtoX|Special Offers|IM",
+        "floodlight_condition": " buttonText === 'see offer details' || buttonText === 'afficher les détails de l’offre' ",
+        "per_row_condition": "lookup#region#model",
+        "total_var": "Google Inventory Bid - Revenue - BidtoX|Special Offers|IM"
+      }
+  ],
+    "value_adjustment_column_name": "Index",
+    "index_low_column_name": "INDEX_LOW",
+    "index_high_column_name": "INDEX_HIGH",
+    "zones_to_process": "GTM_T1",
+    "action_update_scripts": false,
+    "action_test": true
+  }
