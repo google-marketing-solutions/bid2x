@@ -913,7 +913,8 @@ class Bid2xSpreadsheet:
       current_datetime = datetime.datetime.now()
       try:
         cbscripts_sheet.update(
-            values=[[cust_bidding_function_string, f'{current_datetime}']],
+            values=[[cust_bidding_function_string[:50000],
+                     f'{current_datetime}']],
             range_name=f'{update_col}{update_row}',
         )
       except Exception as e:
