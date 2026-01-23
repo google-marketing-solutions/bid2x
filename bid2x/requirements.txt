@@ -34,7 +34,7 @@ oauthlib==3.2.2
 packaging>=23.1
 pandas==2.0.3
 proto-plus==1.23.0
-protobuf==4.23.4
+protobuf==7.34.0rc1
 pyasn1==0.5.0
 pyasn1-modules==0.3.0
 pycparser==2.21
