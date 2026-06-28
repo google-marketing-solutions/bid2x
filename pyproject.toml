@@ -9,6 +9,7 @@ requires-python = ">=3.11"
 dev = [
   "pytest>=8.0",
   "ruff>=0.8",
+  "google-api-python-client>=2.0",
 ]
 
 [tool.pytest.ini_options]
