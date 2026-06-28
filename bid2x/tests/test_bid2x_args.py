@@ -13,6 +13,7 @@ def reset_bid2x_var_flags(monkeypatch: pytest.MonkeyPatch) -> None:
   monkeypatch.setattr(bid2x_var, 'FLOODLIGHT_ID_LIST', '1000001,1000002')
   monkeypatch.setattr(bid2x_var, 'INPUT_FILE', None)
   monkeypatch.setattr(bid2x_var, 'BIDDING_FACTOR_LOW', 0.5)
+  monkeypatch.setattr(bid2x_var, 'JSON_AUTH_FILE', 'client-secret.json')
 
 
 def test_build_argument_parser_exposes_debug_and_input_flags() -> None:
