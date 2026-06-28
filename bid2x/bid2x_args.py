@@ -23,17 +23,16 @@
 """
 
 import argparse
+from typing import Any
+
 import bid2x_var
 
 ArgumentDefaultsHelpFormatter = argparse.ArgumentDefaultsHelpFormatter
 ArgumentParser = argparse.ArgumentParser
 
 
-def process_command_line_args() -> None:
-  """Performs the command line argument processing.
-
-  """
-  # Set up parser object to process arguments.
+def build_argument_parser() -> ArgumentParser:
+  """Create the argparse parser for bid2x command-line options."""
   parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
 
   # Process on/off arguments.
@@ -49,30 +48,34 @@ def process_command_line_args() -> None:
       '--debug',
       default=bid2x_var.DEBUG,
       action='store_true',
-      help='Run script in debug mode ' + '(first level verbosity of output)',
+      help='Run script in debug mode (first level verbosity of output)',
   )
   parser.add_argument(
       '-c',
       '--clear_onoff',
       default=bid2x_var.CLEAR_ONOFF,
       action='store_true',
-      help='On update of sheet overwrite Yes/No custom'
-      + ' bidding button based on pattern.',
+      help=(
+          'On update of sheet overwrite Yes/No custom bidding button '
+          'based on pattern.'
+      ),
   )
   parser.add_argument(
       '-dp',
       '--defer_pattern',
       default=bid2x_var.DEFER_PATTERN,
       action='store_true',
-      help='When set to true DO NOT use LI name pattern to'
-      + ' set rule on/off.  Default is False.',
+      help=(
+          'When set to true DO NOT use LI name pattern to set rule on/off. '
+          'Default is False.'
+      ),
   )
   parser.add_argument(
       '-vv',
       '--verbose',
       default=bid2x_var.TRACE,
       action='store_true',
-      help='Run script in trace mode ' + '(top level verbosity of output)',
+      help='Run script in trace mode (top level verbosity of output)',
   )
 
   # Set up the default value numeric arguments.
@@ -94,15 +97,15 @@ def process_command_line_args() -> None:
       '-bh',
       '--bidding_high',
       default=bid2x_var.BIDDING_FACTOR_HIGH,
-      type=int,
+      type=float,
       help='Bidding factor high limit',
   )
   parser.add_argument(
       '-bl',
       '--bidding_low',
       default=bid2x_var.BIDDING_FACTOR_LOW,
-      type=int,
-      help='Bidding factor high limit',
+      type=float,
+      help='Bidding factor low limit',
   )
   parser.add_argument(
       '-g',
@@ -124,8 +127,10 @@ def process_command_line_args() -> None:
       '-f',
       '--floodlight',
       default=bid2x_var.FLOODLIGHT_ID_LIST,
-      help='Pass a new floodlight ID list for the CB script'
-      + 'Pass list as a comma separated string of integers.',
+      help=(
+          'Pass a new floodlight ID list for the CB script. '
+          'Pass list as a comma separated string of integers.'
+      ),
   )
   parser.add_argument(
       '-i',
@@ -149,7 +154,7 @@ def process_command_line_args() -> None:
       '-lp',
       '--li_pattern',
       default=bid2x_var.LINE_ITEM_NAME_PATTERN,
-      help='Line item string pattern to match. ' + ' Default: *bid-to-x*',
+      help='Line item string pattern to match. Default: *bid-to-x*',
   )
   parser.add_argument(
       '-na',
@@ -161,15 +166,19 @@ def process_command_line_args() -> None:
       '-nd',
       '--algo_display_name',
       default=bid2x_var.NEW_ALGO_DISPLAY_NAME,
-      help='New custom bidding algorithm DV display name. '
-      + 'Use quotes to include spaces.',
+      help=(
+          'New custom bidding algorithm DV display name. '
+          'Use quotes to include spaces.'
+      ),
   )
   parser.add_argument(
       '-s',
       '--service_account',
       default=bid2x_var.SERVICE_ACCOUNT_EMAIL,
-      help='Service account email (typically: '
-      + 'name@<gcp_project>.iam.gserviceaccount.com) to use',
+      help=(
+          'Service account email (typically: '
+          'name@<gcp_project>.iam.gserviceaccount.com) to use'
+      ),
   )
   parser.add_argument(
       '-t',
@@ -190,14 +199,14 @@ def process_command_line_args() -> None:
       '--action_create',
       default=bid2x_var.ACTION_CREATE_ALGORITHM,
       action='store_true',
-      help='Action to run: Create a new custom ' + 'bidding algorithm',
+      help='Action to run: Create a new custom bidding algorithm',
   )
   parser.add_argument(
       '-ah',
       '--action_update_spreadsheet',
       default=bid2x_var.ACTION_UPDATE_SPREADSHEET,
       action='store_true',
-      help='Action to run: Update spreadsheet' + ' with values from DV360',
+      help='Action to run: Update spreadsheet with values from DV360',
   )
   parser.add_argument(
       '-al',
@@ -211,16 +220,16 @@ def process_command_line_args() -> None:
       '--action_remove',
       default=bid2x_var.ACTION_REMOVE_ALGORITHM,
       action='store_true',
-      help='Action to run: Remove a custom bidding '
-      + 'algorithm, use with -g option',
+      help=(
+          'Action to run: Remove a custom bidding algorithm, use with -g option'
+      ),
   )
   parser.add_argument(
       '-as',
       '--action_list_scripts',
       default=bid2x_var.ACTION_LIST_SCRIPTS,
       action='store_true',
-      help='Action to run: List custom bidding scripts'
-      + ' for selected algorithm',
+      help='Action to run: List custom bidding scripts for selected algorithm',
   )
   parser.add_argument(
       '-at',
@@ -237,9 +246,20 @@ def process_command_line_args() -> None:
       help='Action to run: Update custom bidding script',
   )
 
-  args = vars(parser.parse_args())
+  return parser
 
-  # Set Actions from arguments.
+
+def _parse_floodlight_id_list(value: Any) -> list[str]:
+  """Normalize floodlight CLI input into a list of ID strings."""
+  if isinstance(value, str):
+    return value.split()
+  if isinstance(value, list):
+    return value
+  return [str(value)]
+
+
+def apply_args_to_bid2x_var(args: dict[str, Any]) -> None:
+  """Copy parsed command-line arguments into bid2x_var module globals."""
   bid2x_var.ACTION_LIST_ALGOS = args['action_list_algos']
   bid2x_var.ACTION_LIST_SCRIPTS = args['action_list_scripts']
   bid2x_var.ACTION_CREATE_ALGORITHM = args['action_create']
@@ -248,29 +268,24 @@ def process_command_line_args() -> None:
   bid2x_var.ACTION_UPDATE_SCRIPTS = args['action_update']
   bid2x_var.ACTION_TEST = args['action_test']
 
-  # Set debug flag from arguments.
   bid2x_var.DEBUG = args['debug']
   bid2x_var.TRACE = args['verbose']
 
-  # Set Names.
   bid2x_var.NEW_ALGO_NAME = args['algo_name']
   bid2x_var.NEW_ALGO_DISPLAY_NAME = args['algo_display_name']
 
-  # Set files used in the solution from the arguments.
   bid2x_var.JSON_AUTH_FILE = args['json_file']
   bid2x_var.CB_TMP_FILE_PREFIX = args['tmp']
   bid2x_var.CB_LAST_UPDATE_FILE_PREFIX = args['last_upload']
+  bid2x_var.INPUT_FILE = args['input_file']
 
-  # Value-specific information (defaults).
   bid2x_var.PARTNER_ID = args['partner']
   bid2x_var.ADVERTISER_ID = args['advertiser']
   bid2x_var.CB_ALGO_ID = args['algorithm']
   bid2x_var.SERVICE_ACCOUNT_EMAIL = args['service_account']
   bid2x_var.ZONES_TO_PROCESS = args['zones']
 
-  # Floodlight ID list is passed as a comma separated string of integers.
-  # Split the string into a list of integers.
-  bid2x_var.FLOODLIGHT_ID_LIST = (args['floodlight']).split()
+  bid2x_var.FLOODLIGHT_ID_LIST = _parse_floodlight_id_list(args['floodlight'])
 
   bid2x_var.ATTR_MODEL_ID = args['attribute']
   bid2x_var.BIDDING_FACTOR_HIGH = args['bidding_high']
@@ -280,5 +295,9 @@ def process_command_line_args() -> None:
   bid2x_var.ALTERNATE_ALGORITHM = args['alt_algo']
   bid2x_var.LINE_ITEM_NAME_PATTERN = args['li_pattern']
 
-  bid2x_var.JSON_AUTH_FILE = args['json_file']
-  bid2x_var.INPUT_FILE = args['input_file']
+
+def process_command_line_args(argv: list[str] | None = None) -> None:
+  """Parse command-line arguments and apply them to bid2x_var."""
+  parser = build_argument_parser()
+  args = vars(parser.parse_args(argv))
+  apply_args_to_bid2x_var(args)
