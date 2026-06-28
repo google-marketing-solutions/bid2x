@@ -22,8 +22,9 @@
   to all the other objects that are used by the system and provides methods
   to run the system.
 """
-import enum
 
+import enum
+import logging
 from typing import Any
 
 from auth import bid2x_auth
@@ -35,61 +36,39 @@ from googleapiclient import discovery
 
 Enum = enum.Enum
 Bid2xAuth = bid2x_auth.Bid2xAuth
+logger = logging.getLogger(__name__)
 
 
-class Bid2xApplication():
-  """The main object that is used to run the Bid2X system.
-
-  This class is the
-  main object that is used to run the Bid2X system.  It contains references
-  to all the other objects that are used by the system and provides methods
-  to run the system.
-  """
-
-  scopes: str
-  service = None
-  api_name: str
-  api_version: str
-  platform_type: str
-  platform_object = None
-  sheet: Bid2xSpreadsheet
-  _sheet_id: str
-  zone_array = list[Any]
-  debug: bool
-  trace: bool
-  auth: None
+class Bid2xApplication:
+  """Main orchestrator for the Bid2X system."""
 
   def __init__(
-      self, scopes: str, api_name: str, api_version: str, sheet_id: str,
-      auth_file: str, platform_type: str
-  ):
-
+      self,
+      scopes: str,
+      api_name: str,
+      api_version: str,
+      sheet_id: str,
+      auth_file: str,
+      platform_type: str,
+  ) -> None:
     self.scopes = scopes
     self.api_name = api_name
     self.api_version = api_version
-    self.service = None
+    self.service: discovery.Resource | None = None
     self.debug = False
     self.trace = False
     self.platform_type = platform_type
+    self.platform_object: Bid2xDV | Bid2xGTM | None = None
+    self.zone_array: list[Any] = []
 
-    # Establish connection to Sheets.
     self.sheet = Bid2xSpreadsheet(sheet_id, auth_file)
-    self.zone_array = []
-
-    # Create product-specific auth object.
-    self.auth = bid2x_auth.Bid2xAuth(scopes, api_name, api_version)
+    self.auth = Bid2xAuth(scopes, api_name, api_version)
 
   def __str__(self) -> str:
-    """Override str method for this object to return a useful string.
-
-    Args:
-       None
-    Returns:
-       A formatted string containing a formatted list of object properties.
-    """
+    """Return a formatted summary of application state."""
     return_str = (
         f'api_name: {self.api_name}\n'
-        f'api_version: {self.api_version}'
+        f'api_version: {self.api_version}\n'
         f'service: {self.service}\n'
         f'scopes: {self.scopes}\n'
         f'debug: {self.debug}\n'
@@ -110,83 +89,58 @@ class Bid2xApplication():
 
     return return_str
 
-  def __getstate__(self):
-    """Creates a copy of the object's state without the service attribute.
-
-    Args: None.
-
-    Returns:
-      Returns object without service attribute.
-    """
-
-    state = self.__dict__.copy()  # Start with all attributes.
-    del state['service']  # Remove the service attribute.
-    return state  # Return the modified state dictionary.
+  def __getstate__(self) -> dict[str, Any]:
+    """Return object state without the non-serializable service attribute."""
+    state = self.__dict__.copy()
+    state.pop('service', None)
+    return state
 
   def authenticate_service(
       self,
       path_to_service_account_json_file: str,
-      impersonation_email: str = None,
-      service_type: str = None,
-  ) -> discovery.Resource:
-    """Creates authentication credentials based on a service account.
-
-    Args:
-      path_to_service_account_json_file: file downloaded from GCP.
-      impersonation_email: service account email address.
-      service_type: The type of service to authenticate.
-
-    Returns:
-      Returns http object.
-    """
-
+      impersonation_email: str | None = None,
+      service_type: str | None = None,
+  ) -> discovery.Resource | bool:
+    """Authenticate and return the requested Google API service."""
     if service_type == bid2x_var.PlatformType.GTM.value:
       self.service = self.auth.auth_gtm_service(
           path_to_service_account_json_file, impersonation_email
       )
-      service_output = self.service
-    elif service_type == bid2x_var.PlatformType.DV.value:
+      return self.service
+
+    if service_type == bid2x_var.PlatformType.DV.value:
       self.service = self.auth.auth_dv_service(
           path_to_service_account_json_file, impersonation_email
       )
-      service_output = self.service
-    elif service_type == bid2x_var.PlatformType.SHEETS.value:
+      return self.service
+
+    if service_type == bid2x_var.PlatformType.SHEETS.value:
       self.sheet.sheets_service = self.auth.auth_sheets(
           path_to_service_account_json_file, impersonation_email
       )
-
-      service_output = self.sheet.sheets_service
-      if self.sheet:
-        print(f'Sheet is here: {self.sheet.sheet_id}, {self.sheet.sheet_url}')
-      else:
-        print('Sheet is not here')
-
-    else:
-      print(
-          'Error finding type of service to authenticate.  The '
-          f'current value is {service_type}'
+      logger.debug(
+          'Sheets service ready for sheet_id=%s url=%s',
+          self.sheet.sheet_id,
+          self.sheet.sheet_url,
       )
-      return False
+      return self.sheet.sheets_service
 
-    return service_output
+    logger.error(
+        'Unknown service type for authentication: %s', service_type
+    )
+    return False
 
   def start_service(self) -> None:
-    """Creates the script's platform object based on the platform type."""
+    """Create the platform object based on platform_type."""
     if self.platform_type == bid2x_var.PlatformType.GTM.value:
       self.platform_object = Bid2xGTM(self.sheet, self.debug)
-    if self.platform_type == bid2x_var.PlatformType.DV.value:
+    elif self.platform_type == bid2x_var.PlatformType.DV.value:
       self.platform_object = Bid2xDV(self.sheet, self.debug)
 
   def run_script(self) -> bool:
-    """Creates new script and saves it to the appropriate platform.
-
-    Args: None.
-
-    Returns:
-      True if script runs successfully.  False if it doesn't.
-    """
+    """Run script creation and upload for the configured platform."""
     if self.debug:
-      print(f'Platform Type {self.platform_type}')
+      logger.debug('Platform type: %s', self.platform_type)
 
     if self.platform_type == bid2x_var.PlatformType.GTM.value:
       self.platform_object.process_script(self.service)
@@ -197,15 +151,8 @@ class Bid2xApplication():
 
     return True
 
-  def top_level_copy(self, source: Any) -> None:
-    """Copies all config file settings to this object..
-
-    Args:
-      source: The config file opened and decoded into readable format.
-
-    Returns:
-      None.
-    """
+  def top_level_copy(self, source: dict[str, Any]) -> None:
+    """Copy top-level config values from a loaded JSON config."""
     self.scopes = source['scopes']
     self.api_name = source['api_name']
     self.api_version = source['api_version']
@@ -215,23 +162,16 @@ class Bid2xApplication():
     self.debug = source['debug']
     self.trace = source['trace']
 
-    # Move to abstracted platform object and perform same copy of
-    # key properties from source to ensure object is complete.
-    self.platform_object.top_level_copy(source)
+    if self.platform_object is not None:
+      self.platform_object.top_level_copy(source)
 
   def assign_vars_to_objects(self) -> None:
-    """Copy default values from bid2x_var scope into the app object.
-
-    """
-    # Ensure that the 'sheet' property has been initialized and exists.
+    """Copy default values from bid2x_var into this app and child objects."""
     if not hasattr(self, 'sheet'):
-      # Sheet object not here - re-initing new one.
       self.sheet = Bid2xSpreadsheet(
           bid2x_var.SPREADSHEET_KEY, bid2x_var.JSON_AUTH_FILE
       )
 
-    # Sheet object exists for sure now ensure that sheet_id, sheet_url,
-    # and debug settings are correct.
     self.sheet.sheet_id = bid2x_var.SPREADSHEET_KEY
     self.sheet.sheet_url = (
         'https://docs.google.com/spreadsheets/d'
@@ -240,21 +180,15 @@ class Bid2xApplication():
     self.sheet.debug = bid2x_var.DEBUG
     self.sheet.trace = bid2x_var.TRACE
 
-    # Platform type for Bid2X instance.
     self.platform_type = bid2x_var.PLATFORM_TYPE
-
-    # Connection-related properties.
     self.scopes = bid2x_var.API_SCOPES
     self.api_name = bid2x_var.API_NAME
     self.api_version = bid2x_var.API_VERSION
-
     self.debug = bid2x_var.DEBUG
-
     self.json_auth_file = bid2x_var.JSON_AUTH_FILE
     self.service_account_email = bid2x_var.SERVICE_ACCOUNT_EMAIL
 
-    if self.platform_type == bid2x_var.PlatformType.GTM:
-      # GTM related properties.
+    if self.platform_type == bid2x_var.PlatformType.GTM.value:
       zone_index = 1
       for zone in self.zone_array:
         zone.name = f'Zone {zone_index}'
@@ -270,8 +204,10 @@ class Bid2xApplication():
         zone.test_col = bid2x_var.DEFAULT_CB_SCRIPT_COL_TEST
         zone_index += 1
 
-    if self.platform_type == bid2x_var.PlatformType.DV:
-      # Initialize action-related properties.
+    if (
+        self.platform_type == bid2x_var.PlatformType.DV.value
+        and self.platform_object is not None
+    ):
       self.platform_object.action_list_algos = bool(bid2x_var.ACTION_LIST_ALGOS)
       self.platform_object.action_list_scripts = bool(
           bid2x_var.ACTION_LIST_SCRIPTS
@@ -290,7 +226,6 @@ class Bid2xApplication():
       )
       self.platform_object.action_test = bool(bid2x_var.ACTION_TEST)
 
-      # Initialize all the rest of the properties.
       self.platform_object.clear_onoff = bid2x_var.CLEAR_ONOFF
       self.sheet.clear_onoff = bid2x_var.CLEAR_ONOFF
       self.platform_object.defer_pattern = bid2x_var.DEFER_PATTERN
