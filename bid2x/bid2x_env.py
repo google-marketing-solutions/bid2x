@@ -22,10 +22,48 @@
 """
 
 import os
-from distutils.util import strtobool
+
 import bid2x_var
 
+_TRUTHY = frozenset({'y', 'yes', 't', 'true', 'on', '1'})
+_FALSY = frozenset({'n', 'no', 'f', 'false', 'off', '0'})
+
+
+def parse_bool(value: str | bool) -> bool:
+  """Parse a string or bool into a bool.
+
+  Accepts the same truthy/falsy tokens as the former distutils strtobool
+  helper, but returns a bool instead of 0 or 1.
+
+  Args:
+    value: Environment string or bool default to parse.
+
+  Returns:
+    Parsed boolean value.
+
+  Raises:
+    ValueError: If the string is not a recognized boolean token.
+  """
+  if isinstance(value, bool):
+    return value
+
+  normalized = value.strip().lower()
+  if normalized in _TRUTHY:
+    return True
+  if normalized in _FALSY:
+    return False
+  raise ValueError(f'invalid truth value {value!r}')
+
+
+def _env_bool(name: str, default: bool) -> bool:
+  value = os.getenv(name)
+  if value is None:
+    return default
+  return parse_bool(value)
+
+
 def process_environment_vars() -> None:
+  """Load bid2x configuration values from environment variables."""
 
   # Extract run-time parameters from environment variables setting a default
   # when the parameter doesn't exist.  The default value, when the environment
@@ -34,84 +72,81 @@ def process_environment_vars() -> None:
   # project.
 
   # Read in action environment variables.
-  bid2x_var.ACTION_LIST_ALGOS = strtobool(
-    os.getenv('ACTION_LIST_ALGOS',bid2x_var.ACTION_LIST_ALGOS))
-  bid2x_var.ACTION_LIST_SCRIPTS = strtobool(
-    os.getenv('ACTION_LIST_SCRIPTS',bid2x_var.ACTION_LIST_SCRIPTS))
-  bid2x_var.ACTION_CREATE_ALGORITHM = strtobool(
-    os.getenv('ACTION_CREATE_ALGORITHM',bid2x_var.ACTION_CREATE_ALGORITHM))
-  bid2x_var.ACTION_UPDATE_SPREADSHEET = strtobool(
-    os.getenv('ACTION_UPDATE_SPREADSHEET',bid2x_var.ACTION_UPDATE_SPREADSHEET))
-  bid2x_var.ACTION_REMOVE_ALGORITHM = strtobool(
-    os.getenv('ACTION_REMOVE_ALGORITHM',bid2x_var.ACTION_REMOVE_ALGORITHM))
-  bid2x_var.ACTION_UPDATE_SCRIPTS = strtobool(
-    os.getenv('ACTION_UPDATE_SCRIPTS',bid2x_var.ACTION_UPDATE_SCRIPTS))
-  bid2x_var.ACTION_TEST = strtobool(
-    os.getenv('ACTION_TEST',bid2x_var.ACTION_TEST))
+  bid2x_var.ACTION_LIST_ALGOS = _env_bool(
+      'ACTION_LIST_ALGOS', bid2x_var.ACTION_LIST_ALGOS)
+  bid2x_var.ACTION_LIST_SCRIPTS = _env_bool(
+      'ACTION_LIST_SCRIPTS', bid2x_var.ACTION_LIST_SCRIPTS)
+  bid2x_var.ACTION_CREATE_ALGORITHM = _env_bool(
+      'ACTION_CREATE_ALGORITHM', bid2x_var.ACTION_CREATE_ALGORITHM)
+  bid2x_var.ACTION_UPDATE_SPREADSHEET = _env_bool(
+      'ACTION_UPDATE_SPREADSHEET', bid2x_var.ACTION_UPDATE_SPREADSHEET)
+  bid2x_var.ACTION_REMOVE_ALGORITHM = _env_bool(
+      'ACTION_REMOVE_ALGORITHM', bid2x_var.ACTION_REMOVE_ALGORITHM)
+  bid2x_var.ACTION_UPDATE_SCRIPTS = _env_bool(
+      'ACTION_UPDATE_SCRIPTS', bid2x_var.ACTION_UPDATE_SCRIPTS)
+  bid2x_var.ACTION_TEST = _env_bool('ACTION_TEST', bid2x_var.ACTION_TEST)
 
   # Read in Boolean environment variables.
-  bid2x_var.DEBUG = strtobool(
-    os.getenv('DEBUG',bid2x_var.DEBUG))
-  bid2x_var.CLEAR_ONOFF = strtobool(
-    os.getenv('CLEAR_ONOFF',bid2x_var.CLEAR_ONOFF))
-  bid2x_var.DEFER_PATTERN = strtobool(
-    os.getenv('DEFER_PATTERN',bid2x_var.DEFER_PATTERN))
-  bid2x_var.ALTERNATE_ALGORITHM = strtobool(
-    os.getenv('ALTERNATE_ALGORITHM',bid2x_var.ALTERNATE_ALGORITHM))
+  bid2x_var.DEBUG = _env_bool('DEBUG', bid2x_var.DEBUG)
+  bid2x_var.CLEAR_ONOFF = _env_bool('CLEAR_ONOFF', bid2x_var.CLEAR_ONOFF)
+  bid2x_var.DEFER_PATTERN = _env_bool(
+      'DEFER_PATTERN', bid2x_var.DEFER_PATTERN)
+  bid2x_var.ALTERNATE_ALGORITHM = _env_bool(
+      'ALTERNATE_ALGORITHM', bid2x_var.ALTERNATE_ALGORITHM)
 
   # Read in Bid2x --> DV360 related environment variables.
   bid2x_var.NEW_ALGO_NAME = os.getenv(
-    'NEW_ALGO_NAME',bid2x_var.NEW_ALGO_NAME)
+      'NEW_ALGO_NAME', bid2x_var.NEW_ALGO_NAME)
   bid2x_var.NEW_ALGO_DISPLAY_NAME = os.getenv(
-    'NEW_ALGO_DISPLAY_NAME',bid2x_var.NEW_ALGO_DISPLAY_NAME)
+      'NEW_ALGO_DISPLAY_NAME', bid2x_var.NEW_ALGO_DISPLAY_NAME)
   bid2x_var.LINE_ITEM_NAME_PATTERN = os.getenv(
-    'LINE_ITEM_NAME_PATTERN',bid2x_var.LINE_ITEM_NAME_PATTERN)
+      'LINE_ITEM_NAME_PATTERN', bid2x_var.LINE_ITEM_NAME_PATTERN)
   bid2x_var.JSON_AUTH_FILE = os.getenv(
-    'JSON_AUTH_FILE',bid2x_var.JSON_AUTH_FILE)
+      'JSON_AUTH_FILE', bid2x_var.JSON_AUTH_FILE)
   bid2x_var.CB_TMP_FILE_PREFIX = os.getenv(
-    'CB_TMP_FILE_PREFIX',bid2x_var.CB_TMP_FILE_PREFIX)
+      'CB_TMP_FILE_PREFIX', bid2x_var.CB_TMP_FILE_PREFIX)
   bid2x_var.CB_LAST_UPDATE_FILE_PREFIX = os.getenv(
-    'CB_LAST_UPDATE_FILE_PREFIX',bid2x_var.CB_LAST_UPDATE_FILE_PREFIX)
+      'CB_LAST_UPDATE_FILE_PREFIX', bid2x_var.CB_LAST_UPDATE_FILE_PREFIX)
   bid2x_var.PARTNER_ID = int(os.getenv(
-    'PARTNER_ID',bid2x_var.PARTNER_ID))
+      'PARTNER_ID', bid2x_var.PARTNER_ID))
   bid2x_var.ADVERTISER_ID = int(os.getenv(
-    'ADVERTISER_ID',bid2x_var.ADVERTISER_ID))
+      'ADVERTISER_ID', bid2x_var.ADVERTISER_ID))
   bid2x_var.CB_ALGO_ID = int(os.getenv(
-    'CB_ALGO_ID',bid2x_var.CB_ALGO_ID))
+      'CB_ALGO_ID', bid2x_var.CB_ALGO_ID))
   bid2x_var.SERVICE_ACCOUNT_EMAIL = os.getenv(
-    'SERVICE_ACCOUNT_EMAIL',bid2x_var.SERVICE_ACCOUNT_EMAIL)
+      'SERVICE_ACCOUNT_EMAIL', bid2x_var.SERVICE_ACCOUNT_EMAIL)
   bid2x_var.ZONES_TO_PROCESS = os.getenv(
-    'ZONES_TO_PROCESS',bid2x_var.ZONES_TO_PROCESS)
+      'ZONES_TO_PROCESS', bid2x_var.ZONES_TO_PROCESS)
   bid2x_var.FLOODLIGHT_ID_LIST = os.getenv(
-    'FLOODLIGHT_ID_LIST',bid2x_var.FLOODLIGHT_ID_LIST)
+      'FLOODLIGHT_ID_LIST', bid2x_var.FLOODLIGHT_ID_LIST)
   bid2x_var.ATTR_MODEL_ID = int(os.getenv(
-    'ATTR_MODEL_ID',bid2x_var.ATTR_MODEL_ID))
+      'ATTR_MODEL_ID', bid2x_var.ATTR_MODEL_ID))
   bid2x_var.BIDDING_FACTOR_HIGH = float(os.getenv(
-    'BIDDING_FACTOR_HIGH',bid2x_var.BIDDING_FACTOR_HIGH))
+      'BIDDING_FACTOR_HIGH', bid2x_var.BIDDING_FACTOR_HIGH))
   bid2x_var.BIDDING_FACTOR_LOW = float(os.getenv(
-    'BIDDING_FACTOR_LOW',bid2x_var.BIDDING_FACTOR_LOW))
+      'BIDDING_FACTOR_LOW', bid2x_var.BIDDING_FACTOR_LOW))
 
   # Read in spreadsheet-related environment variables.
   bid2x_var.SPREADSHEET_KEY = os.getenv(
-    'SPREADSHEET_KEY',bid2x_var.SPREADSHEET_KEY)
+      'SPREADSHEET_KEY', bid2x_var.SPREADSHEET_KEY)
   bid2x_var.SPREADSHEET_URL = os.getenv(
-    'SPREADSHEET_URL', bid2x_var.SPREADSHEET_URL)
+      'SPREADSHEET_URL', bid2x_var.SPREADSHEET_URL)
   bid2x_var.COLUMN_STATUS = os.getenv(
-    'COLUMN_STATUS',bid2x_var.COLUMN_STATUS)
+      'COLUMN_STATUS', bid2x_var.COLUMN_STATUS)
   bid2x_var.COLUMN_LINEITEMID = os.getenv(
-    'COLUMN_LINEITEMID',bid2x_var.COLUMN_LINEITEMID)
+      'COLUMN_LINEITEMID', bid2x_var.COLUMN_LINEITEMID)
   bid2x_var.COLUMN_LINEITEMNAME = os.getenv(
-    'COLUMN_LINEITEMNAME',bid2x_var.COLUMN_LINEITEMNAME)
+      'COLUMN_LINEITEMNAME', bid2x_var.COLUMN_LINEITEMNAME)
   bid2x_var.COLUMN_LINEITEMTYPE = os.getenv(
-    'COLUMN_LINEITEMTYPE',bid2x_var.COLUMN_LINEITEMTYPE)
+      'COLUMN_LINEITEMTYPE', bid2x_var.COLUMN_LINEITEMTYPE)
   bid2x_var.COLUMN_CAMPAIGNID = os.getenv(
-    'COLUMN_CAMPAIGNID',bid2x_var.COLUMN_CAMPAIGNID)
+      'COLUMN_CAMPAIGNID', bid2x_var.COLUMN_CAMPAIGNID)
   bid2x_var.COLUMN_ADVERTISERID = os.getenv(
-    'COLUMN_ADVERTISERID',bid2x_var.COLUMN_ADVERTISERID)
+      'COLUMN_ADVERTISERID', bid2x_var.COLUMN_ADVERTISERID)
   bid2x_var.COLUMN_CUSTOMBIDDING = os.getenv(
-    'COLUMN_CUSTOMBIDDING',bid2x_var.COLUMN_CUSTOMBIDDING)
+      'COLUMN_CUSTOMBIDDING', bid2x_var.COLUMN_CUSTOMBIDDING)
 
   bid2x_var.DEFAULT_CB_SCRIPT_COL_UPDATE = os.getenv(
-    'DEFAULT_CB_SCRIPT_COL_UPDATE',bid2x_var.DEFAULT_CB_SCRIPT_COL_UPDATE)
+      'DEFAULT_CB_SCRIPT_COL_UPDATE', bid2x_var.DEFAULT_CB_SCRIPT_COL_UPDATE)
   bid2x_var.DEFAULT_CB_SCRIPT_COL_TEST = os.getenv(
-    'DEFAULT_CB_SCRIPT_COL_TEST',bid2x_var.DEFAULT_CB_SCRIPT_COL_TEST)
+      'DEFAULT_CB_SCRIPT_COL_TEST', bid2x_var.DEFAULT_CB_SCRIPT_COL_TEST)
