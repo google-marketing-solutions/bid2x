@@ -26,6 +26,7 @@ import argparse
 from typing import Any
 
 import bid2x_var
+from bid2x_config import Bid2xConfig
 
 ArgumentDefaultsHelpFormatter = argparse.ArgumentDefaultsHelpFormatter
 ArgumentParser = argparse.ArgumentParser
@@ -249,55 +250,18 @@ def build_argument_parser() -> ArgumentParser:
   return parser
 
 
-def _parse_floodlight_id_list(value: Any) -> list[str]:
-  """Normalize floodlight CLI input into a list of ID strings."""
-  if isinstance(value, str):
-    return value.split()
-  if isinstance(value, list):
-    return value
-  return [str(value)]
-
-
 def apply_args_to_bid2x_var(args: dict[str, Any]) -> None:
   """Copy parsed command-line arguments into bid2x_var module globals."""
-  bid2x_var.ACTION_LIST_ALGOS = args['action_list_algos']
-  bid2x_var.ACTION_LIST_SCRIPTS = args['action_list_scripts']
-  bid2x_var.ACTION_CREATE_ALGORITHM = args['action_create']
-  bid2x_var.ACTION_UPDATE_SPREADSHEET = args['action_update_spreadsheet']
-  bid2x_var.ACTION_REMOVE_ALGORITHM = args['action_remove']
-  bid2x_var.ACTION_UPDATE_SCRIPTS = args['action_update']
-  bid2x_var.ACTION_TEST = args['action_test']
+  Bid2xConfig.from_parsed_args(args).apply_to_bid2x_var()
 
-  bid2x_var.DEBUG = args['debug']
-  bid2x_var.TRACE = args['verbose']
 
-  bid2x_var.NEW_ALGO_NAME = args['algo_name']
-  bid2x_var.NEW_ALGO_DISPLAY_NAME = args['algo_display_name']
-
-  bid2x_var.JSON_AUTH_FILE = args['json_file']
-  bid2x_var.CB_TMP_FILE_PREFIX = args['tmp']
-  bid2x_var.CB_LAST_UPDATE_FILE_PREFIX = args['last_upload']
-  bid2x_var.INPUT_FILE = args['input_file']
-
-  bid2x_var.PARTNER_ID = args['partner']
-  bid2x_var.ADVERTISER_ID = args['advertiser']
-  bid2x_var.CB_ALGO_ID = args['algorithm']
-  bid2x_var.SERVICE_ACCOUNT_EMAIL = args['service_account']
-  bid2x_var.ZONES_TO_PROCESS = args['zones']
-
-  bid2x_var.FLOODLIGHT_ID_LIST = _parse_floodlight_id_list(args['floodlight'])
-
-  bid2x_var.ATTR_MODEL_ID = args['attribute']
-  bid2x_var.BIDDING_FACTOR_HIGH = args['bidding_high']
-  bid2x_var.BIDDING_FACTOR_LOW = args['bidding_low']
-  bid2x_var.CLEAR_ONOFF = args['clear_onoff']
-  bid2x_var.DEFER_PATTERN = args['defer_pattern']
-  bid2x_var.ALTERNATE_ALGORITHM = args['alt_algo']
-  bid2x_var.LINE_ITEM_NAME_PATTERN = args['li_pattern']
+def parse_command_line_args(argv: list[str] | None = None) -> Bid2xConfig:
+  """Parse command-line arguments and return a config object."""
+  parser = build_argument_parser()
+  args = vars(parser.parse_args(argv))
+  return Bid2xConfig.from_parsed_args(args)
 
 
 def process_command_line_args(argv: list[str] | None = None) -> None:
   """Parse command-line arguments and apply them to bid2x_var."""
-  parser = build_argument_parser()
-  args = vars(parser.parse_args(argv))
-  apply_args_to_bid2x_var(args)
+  parse_command_line_args(argv).apply_to_bid2x_var()
