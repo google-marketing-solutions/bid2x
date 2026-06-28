@@ -45,13 +45,13 @@ class GTMColumns(Enum):
 # command line arguments or config file.
 
 # Overall application debug flag.
-TRACE = True
-DEBUG = True
+TRACE = False
+DEBUG = False
 
 # Platform Type using Bid2X (GTM, DV360, Ads?)
 PLATFORM_TYPE = 'DV'  # Default platform type is DV.
 JSON_AUTH_FILE = 'client-secret.json'
-SERVICE_ACCOUNT_EMAIL = 'gmp-bid-to-x@client-gcp.iam.gserviceaccount.com'
+SERVICE_ACCOUNT_EMAIL = 'bid-to-x@client-gcp.iam.gserviceaccount.com'
 
 # GTM variables.
 GTM_ACCOUNT_ID = 90000000
@@ -82,10 +82,8 @@ ALTERNATE_ALGORITHM = False
 NEW_ALGO_NAME = 'bid2x'
 NEW_ALGO_DISPLAY_NAME = 'bid2x'
 LINE_ITEM_NAME_PATTERN = 'bid-to-x'
-JSON_AUTH_FILE = 'client-secret.json'
 CB_TMP_FILE_PREFIX = '/tmp/cb_script'
 CB_LAST_UPDATE_FILE_PREFIX = 'last_upload'
-SERVICE_ACCOUNT_EMAIL = 'bid-to-x@client-gcp.iam.gserviceaccount.com'
 DV_STATUS_TAB = 'CB_Scripts'
 
 PARTNER_ID = 100000
