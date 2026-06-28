@@ -1,0 +1,31 @@
+[project]
+name = "bid2x"
+version = "0.0.0"
+description = "First-party data tooling for Google ad optimization (bid2x / budget2x)"
+readme = "README.md"
+requires-python = ">=3.11"
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.8",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["bid2x/tests"]
+pythonpath = ["bid2x"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 80
+src = ["bid2x"]
+
+[tool.ruff.lint]
+# E/F only for now; import sorting (I) will be enforced file-by-file in Phase 2.
+select = [
+  "E",
+  "F",
+]
+ignore = [
+  "E501",
+]

@@ -30,3 +30,22 @@ Guidelines](https://opensource.google/conduct/).
 All submissions, including submissions by project members, require review. We
 use [GitHub pull requests](https://docs.github.com/articles/about-pull-requests)
 for this purpose.
+
+### Incremental changes
+
+For code quality and refactoring work, prefer small, reviewable pull requests.
+See [docs/PR_GUIDE.md](docs/PR_GUIDE.md) for scope, local checks, and the
+suggested order of improvements.
+
+### Local checks
+
+Before opening a pull request that touches `bid2x/` Python code, run:
+
+```bash
+pip install -e ".[dev]"
+python -m compileall -q bid2x
+python -m ruff check bid2x
+python -m pytest
+```
+
+These checks also run automatically in GitHub Actions CI.
