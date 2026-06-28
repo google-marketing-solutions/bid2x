@@ -35,7 +35,8 @@ for this purpose.
 
 For code quality and refactoring work, prefer small, reviewable pull requests.
 See [docs/PR_GUIDE.md](docs/PR_GUIDE.md) for scope, local checks, and the
-suggested order of improvements.
+suggested order of improvements. Track known issues in
+[docs/TECH_DEBT.md](docs/TECH_DEBT.md).
 
 ### Local checks
 
