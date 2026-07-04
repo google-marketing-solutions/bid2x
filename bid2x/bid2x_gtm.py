@@ -24,6 +24,7 @@
 import datetime
 import functools
 import json
+import logging
 import re
 from typing import Any, Sequence
 
@@ -34,6 +35,11 @@ import bid2x_var
 import pandas as pd
 
 partial = functools.partial
+logger = logging.getLogger(__name__)
+
+
+class GTMConfigurationError(ValueError):
+  """Raised when GTM script generation cannot continue."""
 
 
 class GTMFloodlight:
@@ -111,19 +117,19 @@ class Bid2xGTM(Platform):
       from config file to the object.
   """
   sheet: Bid2xSpreadsheet
-  zone_array = list[Any]
-
-  debug: bool = False
-  trace: bool = False
+  zone_array: list[Any]
+  debug: bool
+  trace: bool
   gtm_floodlight_list: list[GTMFloodlight]
   gtm_preprocessing_script: str
   gtm_postprocessing_script: str
   value_adjustment_column_name: str
+  index_factor_column_name: str
   index_low_column_name: str
   index_high_column_name: str
   action_update_scripts: bool
   action_test: bool
-  zones_to_process: str  # Zones involved in the bidding script.
+  zones_to_process: str
 
   def __init__(self, sheet: Bid2xSpreadsheet, debug: bool) -> None:
     self.sheet = sheet
@@ -132,16 +138,16 @@ class Bid2xGTM(Platform):
     self.debug = debug
     self.trace = False
     self.action_update_scripts = False
-    self.action_test = True
+    self.action_test = False
     self.gtm_floodlight_list = bid2x_var.GTM_FLOODLIGHT_LIST
     self.gtm_preprocessing_script = bid2x_var.GTM_PREPROCESSING_SCRIPT
     self.gtm_postprocessing_script = bid2x_var.GTM_POSTPROCESSING_SCRIPT
     self.value_adjustment_column_name = (
         bid2x_var.GTMColumns.VALUE_ADJUSTMENT.value
     )
-    self.index_factor_column_name = bid2x_var.GTMColumns.INDEX_FACTOR
-    self.index_low_column_name = bid2x_var.GTMColumns.INDEX_LOW
-    self.index_high_column_name = bid2x_var.GTMColumns.INDEX_HIGH
+    self.index_factor_column_name = bid2x_var.GTMColumns.INDEX_FACTOR.value
+    self.index_low_column_name = bid2x_var.GTMColumns.INDEX_LOW.value
+    self.index_high_column_name = bid2x_var.GTMColumns.INDEX_HIGH.value
 
     self.zones_to_process = bid2x_var.ZONES_TO_PROCESS
 
@@ -160,7 +166,7 @@ class Bid2xGTM(Platform):
         f'trace: {self.trace}\n'
         f'gtm_preprocessing_script: {self.gtm_preprocessing_script}\n'
         f'gtm_postprocessing_script: {self.gtm_postprocessing_script}\n'
-        f'index_factor_column_name: {self.value_adjustment_column_name}\n'
+        f'index_factor_column_name: {self.index_factor_column_name}\n'
         f'index_low_column_name: {self.index_low_column_name}\n'
         f'index_high_column_name: {self.index_high_column_name}\n'
         f'action_update_scripts: {self.action_update_scripts}\n'
@@ -190,7 +196,7 @@ class Bid2xGTM(Platform):
     df = input_df.reset_index()
 
     if self.debug:
-      print(df.to_string())
+      logger.debug('Index dataframe:\n%s', df.to_string())
 
   # Function to automate data imports, data processing, mapping
   # and opportunity calculation.
@@ -216,14 +222,17 @@ class Bid2xGTM(Platform):
     index_df = pd.DataFrame(index_data[1:], columns=index_data[0])
 
     if self.trace:
-      print(f'Index DataFrame as read in from tab {zone.name}:')
+      logger.debug('Index DataFrame as read in from tab %s', zone.name)
       self.print_dataframe(index_df)
 
     return index_df
 
   def generate_multipliers_js(
-      self, df: pd.DataFrame, value_column: str = 'Index', *dimensions: str
-  ):
+      self,
+      df: pd.DataFrame,
+      value_column: str = 'Index',
+      *dimensions: str,
+  ) -> str:
     """Generate a JavaScript string representing a nested multipliers object.
 
     Args:
@@ -310,7 +319,9 @@ class Bid2xGTM(Platform):
   # or ensure 'Index' is always the last.
   # For example, if you want 'Index' to be the
   # value column regardless of position:
-  def generate_full_js_code_explicit(self, df, value_col_name='Index'):
+  def generate_full_js_code_explicit(
+      self, df: pd.DataFrame, value_col_name: str = 'Index'
+  ) -> str:
     """Generates JavaScript string, explicitly identifying the value column.
 
     Args:
@@ -353,7 +364,7 @@ class Bid2xGTM(Platform):
     """
     if not dimensions:
       return (
-          '// No dimensions, so no meaningful call ',
+          '// No dimensions, so no meaningful call '
           'to getMultiplier can be generated.'
       )
 
@@ -457,7 +468,10 @@ class Bid2xGTM(Platform):
       # to identify a specific floodlight in the JavaScript fn being generated.
       # If it doesn't exist then assume the name of the {{Event}} will be the
       # same as the given name of the floodlight.
-      if hasattr(floodlight_obj, 'floodlight_condition'):
+      if (
+          hasattr(floodlight_obj, 'floodlight_condition')
+          and floodlight_obj.floodlight_condition
+      ):
         conditional = floodlight_obj.floodlight_condition
       else:
         floodlight_name = floodlight_obj.floodlight_name
@@ -502,11 +516,10 @@ class Bid2xGTM(Platform):
                 replace_match_partial, floodlight_obj.per_row_condition
             )
           else:
-            print(
-                'per_row_condition key not defined for this ', 'floodlight: ',
-                floodlight_obj, ' cannot continue.'
+            raise GTMConfigurationError(
+                'per_row_condition key not defined for floodlight '
+                f'{floodlight_obj!s}; cannot continue.'
             )
-            exit(-2)
 
           # Define the column being referenced for adjustments to
           # the conversion value.
@@ -575,8 +588,8 @@ class Bid2xGTM(Platform):
     gtm_new_workspace_body = {'name': gtm_body_name, 'notes': gtm_body_notes}
 
     if self.trace:
-      print(f'gtm_new_workspace_body: {gtm_new_workspace_body}')
-      print(f'prod_workspace_path: {prod_workspace_path}')
+      logger.debug('gtm_new_workspace_body: %s', gtm_new_workspace_body)
+      logger.debug('prod_workspace_path: %s', prod_workspace_path)
 
     gtm_new_workspace = (
         service.accounts().containers().workspaces().create(
@@ -591,7 +604,7 @@ class Bid2xGTM(Platform):
       container_id = gtm_new_workspace['containerId']
       workspace_id = gtm_new_workspace['workspaceId']
       if self.trace:
-        print(f'gtm_new_workspace return value: {gtm_new_workspace}')
+        logger.debug('gtm_new_workspace return value: %s', gtm_new_workspace)
     else:
       return False
 
@@ -610,15 +623,21 @@ class Bid2xGTM(Platform):
     )
 
     if self.trace:
-      print(f'GTM var is: {gtm_var}')
-      print(f'Current internal function is{gtm_var["parameter"][0]["value"]}')
+      logger.debug('GTM var is: %s', gtm_var)
+      logger.debug(
+          'Current internal function is %s',
+          gtm_var['parameter'][0]['value'],
+      )
 
     # Set gtm_var holder to have new value of function that was passed.
     gtm_var['parameter'][0]['value'] = new_function
 
     if self.trace:
-      print(f'GTM var after update is: {gtm_var}')
-      print(f'Proposed internal function is{gtm_var["parameter"][0]["value"]}')
+      logger.debug('GTM var after update is: %s', gtm_var)
+      logger.debug(
+          'Proposed internal function is %s',
+          gtm_var['parameter'][0]['value'],
+      )
 
     # Update GTM with the new version of gtm_var that has been updated
     # with the new JavaScript function.
@@ -629,13 +648,13 @@ class Bid2xGTM(Platform):
     )
 
     if self.trace:
-      print(f'return value from update on GTM is: {gtm_updated}')
+      logger.debug('return value from update on GTM is: %s', gtm_updated)
 
     # Check to see if the value returned for the variable's value is the
     # same as what it was passed.  This indicates a successful update.
     if gtm_updated['parameter'][0]['value'] == gtm_var['parameter'][0]['value']:
       if self.trace:
-        print('Update variable success')
+        logger.debug('Update variable success')
 
     else:
       # Not a good return value, return from function.
@@ -653,9 +672,11 @@ class Bid2xGTM(Platform):
     gtm_versioned_workspace_body = {'name': gtm_name, 'notes': gtm_notes}
 
     if self.trace:
-      print('Create_version()... ')
-      print(f'gtm_path = {gtm_path}')
-      print(f'gtm_versioned_workspace_body = {gtm_versioned_workspace_body}')
+      logger.debug('Create_version()...')
+      logger.debug('gtm_path = %s', gtm_path)
+      logger.debug(
+          'gtm_versioned_workspace_body = %s', gtm_versioned_workspace_body
+      )
 
     # Created versioned workspace.
     gtm_versioned_workspace = (
@@ -670,8 +691,8 @@ class Bid2xGTM(Platform):
           'containerVersionId']
 
       if self.trace:
-        print(f'gtm_versioned_workspace: {gtm_versioned_workspace}')
-        print('new version success')
+        logger.debug('gtm_versioned_workspace: %s', gtm_versioned_workspace)
+        logger.debug('new version success')
     else:
       return False
 
@@ -688,7 +709,7 @@ class Bid2xGTM(Platform):
     # Check return value of gtm_publish_path.
     if gtm_published:
       if self.debug:
-        print(f'GTM variable: {var_req} successfully published.')
+        logger.info('GTM variable %s successfully published.', var_req)
     else:
       return False
 
@@ -725,8 +746,7 @@ class Bid2xGTM(Platform):
       )
 
       if self.debug:
-        print('Generated JS function returned:')
-        print(js_function)
+        logger.debug('Generated JS function returned:\n%s', js_function)
 
       # If there's a good service and a good function and this
       # is NOT a test then update the GTM variable.
@@ -734,16 +754,19 @@ class Bid2xGTM(Platform):
         ret_val = self.update_gtm_variable(service, js_function, zone)
 
         if ret_val:
-          print(
-              f'Success updating zone {zone.name} GTM variable to new',
-              f'value of:{chr(10)}{js_function}',
+          logger.info(
+              'Success updating zone %s GTM variable to new value:\n%s',
+              zone.name,
+              js_function,
           )
         else:
-          print('Error updating GTM variable with function.')
-          continue  # Process next loop.
+          logger.error('Error updating GTM variable with function.')
+          continue
       else:
-        print('No GTM service, no valid function, or this is a test.')
-        continue  # Process next loop.
+        logger.warning(
+            'No GTM service, no valid function, or this is a test.'
+        )
+        continue
 
     return True
 
@@ -773,8 +796,7 @@ class Bid2xGTM(Platform):
       if attr in source:
         setattr(self, attr, source[attr])
 
-    self.gtm_floodlight_list = [
-        GTMFloodlight(**item) for item in source['gtm_floodlight_list']
-    ]
-
-    return
+    if 'gtm_floodlight_list' in source:
+      self.gtm_floodlight_list = [
+          GTMFloodlight(**item) for item in source['gtm_floodlight_list']
+      ]

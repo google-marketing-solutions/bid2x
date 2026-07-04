@@ -25,7 +25,7 @@
 
 import inspect
 import json
-
+import logging
 from typing import Any
 
 from bid2x_platform import Platform
@@ -38,6 +38,7 @@ import pandas
 
 HttpError = errors.HttpError
 DataFrame = pandas.DataFrame
+logger = logging.getLogger(__name__)
 
 
 class Bid2xDV(Platform):
@@ -175,7 +176,7 @@ class Bid2xDV(Platform):
         from config file to the object.
   """
   sheet: Bid2xSpreadsheet
-  zone_array = list[Any]
+  zone_array: list[Any]
 
   action_list_algos: bool
   action_list_scripts: bool
@@ -224,7 +225,7 @@ class Bid2xDV(Platform):
 
     self.debug = debug
     self.trace = False
-    self.clear_onoff = True
+    self.clear_onoff = False
     self.defer_pattern = False
     self.alternate_algorithm = False
 
@@ -242,7 +243,7 @@ class Bid2xDV(Platform):
     self.advertiser_id = 0
     self.cb_algo_id = 0
 
-    self.floodlight_id_list = None
+    self.floodlight_id_list: list[str] = []
 
     # Placeholder name of 'c1' for campaign 1 as zones typically
     # map to campaign during use.
@@ -626,9 +627,8 @@ class Bid2xDV(Platform):
     )
 
     if self.trace:
-      print(
-          'read cb algo by id full response: ',
-          f'{response_read_single_cb_algo}'
+      logger.debug(
+          'read cb algo by id full response: %s', response_read_single_cb_algo
       )
 
     # The default sort order of the output above is by createTime DESC.
@@ -648,7 +648,7 @@ class Bid2xDV(Platform):
         break
 
     if not latest_accepted_script:
-      print('No most recent algorithm')
+      logger.warning('No most recent algorithm')
       return ''
 
     # At this point the script of interest is in the variable.
@@ -656,7 +656,9 @@ class Bid2xDV(Platform):
     latest_cb_upload_script_id = latest_accepted_script['customBiddingScriptId']
 
     if self.trace:
-      print(f'customBiddingScriptId = {latest_cb_upload_script_id}')
+      logger.debug(
+          'customBiddingScriptId = %s', latest_cb_upload_script_id
+      )
 
     # Get details on the selected script ID.
     request_cb_script_details = (
@@ -717,26 +719,18 @@ class Bid2xDV(Platform):
         None.
     """
 
-    # Write temporary file to tmp location.
     try:
-      fp = open(filename_with_path, 'w')
+      with open(filename_with_path, 'w', encoding='utf-8') as fp:
+        fp.write(script)
     except (FileNotFoundError, PermissionError, OSError) as e:
-      print(f'Error opening file: {e}')
+      logger.error('Error opening file %s: %s', filename_with_path, e)
       raise
-
-    try:
-      fp.write(script)
     except (IOError, OSError) as e:
-      print(f'Error writing local file: {e}')
-
-    try:
-      fp.close()
-    except (FileNotFoundError, PermissionError, OSError) as e:
-      print(f'Error closing file: {e}')
+      logger.error('Error writing local file %s: %s', filename_with_path, e)
       raise
 
     if self.debug:
-      print('Wrote custom bidding script to tmp file')
+      logger.debug('Wrote custom bidding script to tmp file %s', filename_with_path)
 
   def read_last_upload_file(self, filename_with_path: str) -> str:
     """This function reads the last uploaded file and returns it as a string.
@@ -748,31 +742,13 @@ class Bid2xDV(Platform):
         The contents of the file or an empty string if the file cannot be found.
     """
 
-    # Set the default return value of empty string.
     data = ''
 
-    # Try to open the file.
     try:
-      fp = open(filename_with_path, 'r')
-    except (FileNotFoundError, PermissionError, OSError) as e:
-      print(f'Error opening last update file: {e}')
-      # Clear error is file is not found or error.
-      pass
-      fp = None
-
-    if fp:
-      try:
+      with open(filename_with_path, 'r', encoding='utf-8') as fp:
         data = fp.read()
-      except (IOError, OSError) as e:
-        print(f'Error reading local file: {e}')
-        raise
-
-    if fp:
-      try:
-        fp.close()
-      except (FileNotFoundError, PermissionError, OSError) as e:
-        print(f'Error closing file: {e}')
-        raise
+    except (FileNotFoundError, PermissionError, OSError) as e:
+      logger.warning('Error opening last update file %s: %s', filename_with_path, e)
 
     return data
 
@@ -789,27 +765,19 @@ class Bid2xDV(Platform):
         True on success, False otherwise.
     """
 
-    # Try to open the file for write.
     try:
-      fp = open(filename_with_path, 'w')
+      with open(filename_with_path, 'w', encoding='utf-8') as fp:
+        fp.write(script)
     except (FileNotFoundError, PermissionError, OSError) as e:
-      print(
-          'Error opening last update ',
-          f'file {filename_with_path} for write: {e}'
+      logger.error(
+          'Error opening last update file %s for write: %s',
+          filename_with_path,
+          e,
       )
       return False
-
-    try:
-      fp.write(script)
     except (IOError, OSError) as e:
-      print(f'Error writing local file: {e}')
+      logger.error('Error writing local file %s: %s', filename_with_path, e)
       return False
-
-    try:
-      fp.close()
-    except (FileNotFoundError, PermissionError, OSError) as e:
-      print(f'Error closing file: {e}')
-      raise
 
     return True
 
@@ -824,7 +792,91 @@ class Bid2xDV(Platform):
     """
 
     if self.trace:
-      print(input_df.to_string())
+      logger.debug('Dataframe contents:\n%s', input_df.to_string())
+
+  def _build_cb_script_from_rows(self, list_of_dicts: list[dict[str, Any]]) -> str:
+    """Build a DV360 custom bidding script from spreadsheet row dicts."""
+    floodlight_ids = self.floodlight_id_list or []
+
+    if not self.alternate_algorithm:
+      cust_bidding_function_string = 'return max_aggregate(['
+    else:
+      cust_bidding_function_string = ''
+
+    processed_line_items: list[Any] = []
+    for row in list_of_dicts:
+      if row.get('Generate Custom Bidding', '').lower() != 'yes':
+        continue
+
+      factor = row['Bidding Factor']
+      line_item_id = row['Line Item ID']
+      verified_factor = min(
+          max(factor, self.bidding_factor_low), self.bidding_factor_high
+      )
+
+      if not (bid2x_util.is_number(factor) and line_item_id):
+        continue
+
+      if processed_line_items.count(row['Line Item ID']) != 0:
+        continue
+
+      if not self.alternate_algorithm:
+        for floodlight_id_item in floodlight_ids:
+          cust_bidding_function_string += (
+              f'\n  ([total_conversion_count('
+              f'{floodlight_id_item},'
+              f'{self.attr_model_id})>0, '
+          )
+          cust_bidding_function_string += (
+              f'line_item_id == {line_item_id}], '
+          )
+          cust_bidding_function_string += f'{verified_factor}),'
+      else:
+        for floodlight_id_item in floodlight_ids:
+          if not processed_line_items:
+            conditional_prefix = ''
+          else:
+            conditional_prefix = 'el'
+
+          cust_bidding_function_string += (
+              f'\n{conditional_prefix}if line_item_id == {line_item_id}:'
+          )
+          cust_bidding_function_string += (
+              '\n  return total_conversion_count'
+          )
+          cust_bidding_function_string += (
+              f'({floodlight_id_item},{self.attr_model_id}) * '
+          )
+          cust_bidding_function_string += f'{verified_factor}'
+
+      processed_line_items.append(row['Line Item ID'])
+
+    if not self.alternate_algorithm:
+      for floodlight_id_item in floodlight_ids:
+        cust_bidding_function_string += (
+            '\n  ([total_conversion_count('
+            f'{floodlight_id_item},{self.attr_model_id})>0], '
+        )
+        value_for_custom_bidding_function = min(
+            max(bid2x_var.BIDDING_FACTOR_LOW, self.bidding_factor_low),
+            self.bidding_factor_high,
+        )
+        cust_bidding_function_string += (
+            f'{value_for_custom_bidding_function}),'
+        )
+
+      cust_bidding_function_string = cust_bidding_function_string.rstrip(',')
+      cust_bidding_function_string += '])'
+    else:
+      cust_bidding_function_string += '\nelse:\n  return 0'
+
+    if self.trace:
+      logger.debug('length of processedLineItems: %d', len(processed_line_items))
+
+    if not processed_line_items:
+      return 'return 0;'
+
+    return cust_bidding_function_string
 
   def generate_cb_script_max_of_conversion_counts(
       self, zone_string: str
@@ -840,133 +892,31 @@ class Bid2xDV(Platform):
         A fully formed custom bidding script suitable for upload to DV360.
     """
 
-    list_of_dicts = []
+    list_of_dicts: list[dict[str, Any]] = []
 
     try:
-      ref = self.sheet.gc.open_by_key(self.sheet.sheet_id
-                                     ).worksheet(zone_string)
+      ref = self.sheet.gc.open_by_key(self.sheet.sheet_id).worksheet(zone_string)
       list_of_dicts = ref.get_all_records()
     except gspread.exceptions.SpreadsheetNotFound:
-      print('Error: Spreadsheet not found while.')
+      logger.error('Spreadsheet not found while reading zone %s', zone_string)
     except gspread.exceptions.WorksheetNotFound:
-      print('Error: Worksheet not found.')
+      logger.error('Worksheet not found for zone %s', zone_string)
     except gspread.exceptions.APIError as e:
-      print(f'Error connecting to worksheet for get_all_records(): {e}')
-    except gspread.exceptions.GSpreadException as e:
-      print(f'An unexpected error occurred: {e}')
-    except (ValueError, TypeError) as e:
-      print(f'Error reading values from get_all_records(): {e}')
-    except TimeoutError:
-      print(
-          '''Request timed out while opening spreadsheet.
-            Please check your network connection.'''
+      logger.error(
+          'Error connecting to worksheet for get_all_records(): %s', e
       )
-      raise  # Reraise the exception.
+    except gspread.exceptions.GSpreadException as e:
+      logger.error('Unexpected gspread error for zone %s: %s', zone_string, e)
+    except (ValueError, TypeError) as e:
+      logger.error('Error reading values from get_all_records(): %s', e)
+    except TimeoutError:
+      logger.error(
+          'Request timed out while opening spreadsheet for zone %s',
+          zone_string,
+      )
+      raise
 
-    if not self.alternate_algorithm:
-      # If we are not using the alternate algorithm then we need to
-      # create a function that uses max_aggregate.
-      cust_bidding_function_string = 'return max_aggregate(['
-    else:
-      # If we are using the alternate algorithm then we need to
-      # create a function that uses if statements.
-      cust_bidding_function_string = ''
-
-    processed_line_items = []
-    for row in list_of_dicts:
-      # If the 'Generate Custom Bidding' column is set to 'Yes' then
-      # we need to process this row.
-      if row['Generate Custom Bidding'].lower() == 'yes':
-        factor = row['Bidding Factor']
-        line_item_id = row['Line Item ID']
-
-        # Calculate a 'valid' bidding factor value within the
-        # bounds of high/low settings.
-        verified_factor = min(
-            max(factor, self.bidding_factor_low), self.bidding_factor_high
-        )
-
-        # Conduct checks on the retrieved values of factor and line_item_id
-        # to ensure they are valid numbers.  The lineItemID must be an
-        # integer and the factor should be a float in a sensible range
-        # low >= BIDDING_FACTOR_LO (default 0.5) and
-        # high <= BIDDING_FACTOR_HIGH (default 1000).
-
-        if bid2x_util.is_number(factor) and line_item_id:
-
-          # If the line item ID does not exist in our list of processed
-          # line item IDs then add to the custom bidding function string
-          # and add this ID to the list of processed items.
-          if processed_line_items.count(row['Line Item ID']) == 0:
-
-            if not self.alternate_algorithm:
-              # Loop and create a separate line for each
-              # floodlight in the list.
-              for floodlight_id_item in self.floodlight_id_list:
-                cust_bidding_function_string += (
-                    f'\n  ([total_conversion_count('
-                    f'{floodlight_id_item},'
-                    f'{self.attr_model_id})>0, '
-                )
-                cust_bidding_function_string += (
-                    f'line_item_id == {line_item_id}], '
-                )
-                cust_bidding_function_string += (f'{verified_factor}),')
-            else:
-              # Loop and create a separate if construct for each
-              # floodlight in the list.
-              for floodlight_id_item in self.floodlight_id_list:
-                if not processed_line_items:
-                  conditional_prefix = ''
-                else:
-                  conditional_prefix = 'el'
-
-                cust_bidding_function_string += (
-                    f'\n{conditional_prefix}if line_item_id == '
-                    + f'{line_item_id}:'
-                )
-                cust_bidding_function_string += (
-                    '\n  return total_conversion_count'
-                )
-                cust_bidding_function_string += (
-                    f'({floodlight_id_item},', f'{self.attr_model_id}) * '
-                )
-                cust_bidding_function_string += f'{verified_factor}'
-
-            # We have processed this line item id, add it to the
-            # list of processed items.
-            processed_line_items.append(row['Line Item ID'])
-
-    # Remove trailing comma as we're out of the for loop now so
-    # no further lines.
-    if not self.alternate_algorithm:
-      for floodlight_id_item in self.floodlight_id_list:
-        cust_bidding_function_string += (
-            '\n  ([total_conversion_count('
-            f'{floodlight_id_item},{self.attr_model_id})>0], '
-        )
-        value_for_custom_bidding_function = min(
-            max(bid2x_var.BIDDING_FACTOR_LOW, self.bidding_factor_low),
-            self.bidding_factor_high
-        )
-        cust_bidding_function_string += (
-            f'{value_for_custom_bidding_function}),'
-        )
-
-      # Remove final comma & insert close right square bracket and
-      # close parenthasis to finalize array and function.
-      cust_bidding_function_string = cust_bidding_function_string.rstrip(',')
-      cust_bidding_function_string += '])'
-    else:
-      cust_bidding_function_string += '\nelse:\n  return 0'
-
-    if self.trace:
-      print(f'length of processedLineItems: {len(processed_line_items)}')
-
-    if not processed_line_items:
-      cust_bidding_function_string = 'return 0;'
-
-    return cust_bidding_function_string
+    return self._build_cb_script_from_rows(list_of_dicts)
 
   def process_script(self, service: Any) -> bool:
     """Orchestrates the custom bidding change in DV360.
@@ -979,60 +929,56 @@ class Bid2xDV(Platform):
     """
 
     if self.action_list_scripts:
-      # Show advertiser level scripts for each initialized zone
       for zone in self.zone_array:
-        print(
-            f'Custom bidding scripts for zone {zone.name}',
-            f' advertiser_id = {zone.advertiser_id}'
+        logger.info(
+            'Custom bidding scripts for zone %s advertiser_id=%s',
+            zone.name,
+            zone.advertiser_id,
         )
 
         response = self.list_advertiser_algo_scripts(
             service, zone.advertiser_id, zone.algorithm_id
         )
 
-        json_pretty_print = json.dumps(response, indent=2)
-        print(f'{json_pretty_print}')
+        if self.trace:
+          logger.debug('%s', json.dumps(response, indent=2))
 
     if self.action_list_algos:
-      # Show advertiser level algorithms for each initialized zone
-      print(
-          'Advertiser level algorithms for advertiser ID ',
-          f'= {self.advertiser_id}'
+      logger.info(
+          'Advertiser level algorithms for advertiser ID=%s',
+          self.advertiser_id,
       )
       response = self.list_advertiser_algorithms(service, self.advertiser_id)
-      json_pretty_print = json.dumps(response, indent=2)
-      print(f'{json_pretty_print}')
+      if self.trace:
+        logger.debug('%s', json.dumps(response, indent=2))
 
     if self.action_create_algorithm:
-      # Create a new custom bidding algorithm from Partner level.
-      print('Create new custom bidding algorithm for zone(s):')
+      logger.info('Create new custom bidding algorithm for zone(s)')
 
       for zone in self.zone_array:
-        # Create CB Algorithm at the Advertiser level.
         algorithm_name = self.new_algo_name + '_' + zone.name
         display_name = self.new_algo_display_name + '_' + zone.name
-        print(f'New algorithm name: {display_name}')
+        logger.info('New algorithm name: %s', display_name)
         response = self.create_cb_algorithm_advertiser(
             service, self.advertiser_id, algorithm_name, display_name
         )
 
         if self.trace:
-          json_pretty_print = json.dumps(response, indent=2)
-          print(
-              'New custom bidding algorithm ', f'response = {json_pretty_print}'
+          logger.debug(
+              'New custom bidding algorithm response=%s',
+              json.dumps(response, indent=2),
           )
 
     if self.action_remove_algorithm:
-      # Remove an advertiser custom bidding algorithm by ID.
-      print(
-          f'Custom bidding algorithm id {self.cb_algo_id} will ',
-          'attempted to be deleted.'
+      logger.info(
+          'Custom bidding algorithm id %s will be deleted.',
+          self.cb_algo_id,
       )
       response = self.remove_cb_algorithm_advertiser(
           service, self.advertiser_id, self.cb_algo_id
       )
 
-      print(f'result of deletion attempt: {response}')
+      logger.info('Result of deletion attempt: %s', response)
 
     if self.action_update_scripts:
       # Update the custom bidding scripts in DV360.
@@ -1045,10 +991,9 @@ class Bid2xDV(Platform):
         )
 
         if self.trace:
-          # Show the generated custom bidding script.
-          print(
-              'custom_bidding_function_string:\n',
-              f'{custom_bidding_function_string}\n',
+          logger.debug(
+              'custom_bidding_function_string:\n%s\n',
+              custom_bidding_function_string,
           )
 
         # Get a list of line items this will affect.
@@ -1080,38 +1025,34 @@ class Bid2xDV(Platform):
           # The new script is the same as the old script, don't
           # write to file and don't upload.  Just return False from
           # this function.
-          print(
-              f'New script for {zone.name} is the same as the existing script;'
-              ' not uploading'
+          logger.info(
+              'New script for %s is the same as the existing script; not uploading',
+              zone.name,
           )
           return False
 
+        logger.info(
+            'New script for %s is different from last uploaded script; uploading',
+            zone.name,
+        )
+
+        self.write_last_upload_file(filename, custom_bidding_function_string)
+
+        update_result = zone.update_custom_bidding_scripts(
+            service, zone.advertiser_id, zone.algorithm_id, filename,
+            line_item_array
+        )
+
+        if not update_result:
+          logger.error('Update of C.B. Script for zone %s failed.', zone.name)
         else:
-          print(
-              f'New script for {zone.name} is different from last ',
-              'uploaded script; uploading new version',
+          logger.info(
+              'Update of C.B. Script for zone %s succeeded.', zone.name
           )
 
-          # Write new script to tmp filename.  Upload is from a tmp file.
-          self.write_last_upload_file(filename, custom_bidding_function_string)
-
-          # Make call to update script in DV360 passing in filename containing
-          # new script.
-          update_result = zone.update_custom_bidding_scripts(
-              service, zone.advertiser_id, zone.algorithm_id, filename,
-              line_item_array
+          self.sheet.update_cb_scripts_tab(
+              zone, custom_bidding_function_string, test_run=False
           )
-
-          if not update_result:
-            print(f'Update of C.B. Script for zone {zone.name} failed.')
-          else:
-            print(f'Update of C.B. Script for zone {zone.name} succeeded.')
-
-            # Update of C.B. script was successful, update the Google
-            # Sheets spreadsheet tab named 'CB_Scripts'
-            self.sheet.update_cb_scripts_tab(
-                zone, custom_bidding_function_string, test_run=False
-            )
 
     if self.action_test:
       for zone in self.zone_array:
@@ -1120,11 +1061,9 @@ class Bid2xDV(Platform):
             self.generate_cb_script_max_of_conversion_counts(zone.name)
         )
 
-        # Print the value of the script to the console.
         if self.trace:
-          print(
-              f"""rules for zone {zone.name}:\n
-                {custom_bidding_string}"""
+          logger.debug(
+              'rules for zone %s:\n%s', zone.name, custom_bidding_string
           )
 
         # Write the Test Run out to the test column in the associated

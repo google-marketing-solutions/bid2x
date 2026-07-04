@@ -9,6 +9,14 @@ requires-python = ">=3.11"
 dev = [
   "pytest>=8.0",
   "ruff>=0.8",
+  "pandas>=2.0",
+  "jsonpickle>=3.0",
+  "google-api-core>=2.0",
+  "google-api-python-client>=2.0",
+  "google-cloud-storage>=2.0",
+  "oauth2client>=4.0",
+  "gspread>=6.0",
+  "functions-framework>=3.0",
 ]
 
 [tool.pytest.ini_options]

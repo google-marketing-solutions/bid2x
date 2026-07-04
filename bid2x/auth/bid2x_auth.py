@@ -20,53 +20,25 @@
   This module contains the authentication functions for the bid2x application.
 """
 
+from typing import Any
+
 from googleapiclient import discovery
 from oauth2client.service_account import ServiceAccountCredentials
-
 
 build = discovery.build
 
 
 class Bid2xAuth:
-  """Authentication for bid2x objects.
+  """Authenticate bid2x service accounts for Google APIs."""
 
-  Attributes:
-      _scopes (str): The name of the dog.
-      _service (Resource):
-      _api_name (str): The breed of the dog.
-      _api_version (str): The age of the dog in years.
-
-  Methods:
-      auth_service_creds(self,
-                          path_to_service_account_json_file):
-          Authenticates the service account.
-      auth_gtm_service(self,
-                        path_to_service_account_json_file,
-                        impersonation_email):
-          Creates the GTM resource after authenticating credentials.
-      auth_dv(self, auth_file, auth_email_account):
-          Creates the DV360 resource after authenticating credentials.
-      auth_dv_service(self,
-                      path_to_service_account_json_file,
-                      impersonation_email):
-          Creates the DV360 resource after authenticating credentials.
-      auth_sheets(self, auth_file: str, auth_email_account: str=None):
-          Creates Google sheets credentials based on a service account
-          and email.
-      auth_sheets_service(self,
-                          path_to_service_account_json_file,
-                          impersonation_email)
-          Creates Google sheets credentials based on a service account
-          and email.
-  """
-
-  _scopes: str
-
-  _service = None
+  _scopes: list[str] | str
+  _service: Any
   _api_name: str
   _api_version: str
 
-  def __init__(self, scopes: str, api_name: str, api_version: str):
+  def __init__(
+      self, scopes: list[str] | str, api_name: str, api_version: str
+  ) -> None:
     self._scopes = scopes
     self._api_name = api_name
     self._api_version = api_version
@@ -75,7 +47,7 @@ class Bid2xAuth:
   def auth_service_creds(
       self,
       path_to_service_account_json_file: str,
-      impersonation_email: str = None,
+      impersonation_email: str | None = None,
   ) -> ServiceAccountCredentials:
     """Authorizes an httplib2.Http instance using service account credentials.
 
@@ -100,18 +72,16 @@ class Bid2xAuth:
   def auth_gtm_service(
       self,
       path_to_service_account_json_file: str,
-      impersonation_email: str = None,
-  ) -> discovery.Resource:
-    """Top level function for auth'ing to Google Tag Manager.
+      impersonation_email: str | None = None,
+  ) -> Any:
+    """Create an authenticated Google Tag Manager API service.
 
     Args:
       path_to_service_account_json_file: An authentication file in json format.
-      impersonation_email: The email account (typically a service account) under
-        which the auth file is to be used.
+      impersonation_email: Optional delegated service account email.
 
     Returns:
-      Returns True if able to create a good .service object
-      within this class, otherwise it returns False.
+      The authenticated GTM API service resource, or None if credentials fail.
     """
 
     # Load the service account credentials from the specified JSON keyfile.
@@ -128,18 +98,17 @@ class Bid2xAuth:
       return self._service
 
   def auth_dv(
-      self, auth_file: str, auth_email_account: str = None
-  ) -> discovery.Resource:
-    """Top level function for auth'ing to DV360.
+      self, auth_file: str, auth_email_account: str | None = None
+  ) -> Any:
+    """Create an authenticated DV360 API service.
 
     Args:
       auth_file: An authentication file in json format.
-      auth_email_account: The email account (typically a service account) under
-        which the auth file is to be used.
+      auth_email_account: Optional delegated service account email.
 
     Returns:
-      Returns True if able to create a good .service object
-      within this class, otherwise it returns False.
+      The authenticated DV360 API service resource.
+
     Raises:
       ValueError: If authentication fails.
     """
@@ -158,16 +127,16 @@ class Bid2xAuth:
   def auth_dv_service(
       self,
       path_to_service_account_json_file: str,
-      impersonation_email: str = None,
-  ) -> discovery.Resource:
-    """Creates DV credentials based on a service account and email.
+      impersonation_email: str | None = None,
+  ) -> Any:
+    """Create an authenticated DV360 API service using service account creds.
 
     Args:
       path_to_service_account_json_file: file downloaded from GCP
-      impersonation_email: service account email address.
+      impersonation_email: Optional delegated service account email.
 
     Returns:
-      Returns http object.
+      The authenticated DV360 API service resource, or None if credentials fail.
     """
 
     # Load the service account credentials from the specified JSON keyfile.
@@ -191,16 +160,16 @@ class Bid2xAuth:
     return self._service
 
   def auth_sheets(
-      self, auth_file: str, auth_email_account: str = None
-  ) -> discovery.Resource:
-    """Creates Google sheets credentials based on a service account and email.
+      self, auth_file: str, auth_email_account: str | None = None
+  ) -> Any:
+    """Create an authenticated Google Sheets API service.
 
     Args:
       auth_file: file downloaded from GCP
-      auth_email_account: service account email address.
+      auth_email_account: Optional delegated service account email.
 
     Returns:
-      Returns http object.
+      The authenticated Sheets API service resource.
 
     Raises:
       ValueError: If authentication fails.
@@ -220,16 +189,16 @@ class Bid2xAuth:
   def auth_sheets_service(
       self,
       path_to_service_account_json_file: str,
-      impersonation_email: str = None,
-  ) -> discovery.Resource:
-    """Creates Google sheets credentials based on a service account and email.
+      impersonation_email: str | None = None,
+  ) -> Any:
+    """Create an authenticated Google Sheets API service.
 
     Args:
       path_to_service_account_json_file: file downloaded from GCP
-      impersonation_email: service account email address.
+      impersonation_email: Optional delegated service account email.
 
     Returns:
-      Returns http object.
+      The authenticated Sheets API service resource.
     """
 
     # Authorizes an httplib2.Http instance using service account credentials.
