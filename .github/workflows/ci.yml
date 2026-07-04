@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  bid2x:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install development dependencies
+        run: pip install "pytest>=8.0" "ruff>=0.8"
+
+      - name: Compile bid2x Python sources
+        run: python -m compileall -q bid2x
+
+      - name: Lint bid2x with ruff
+        run: python -m ruff check bid2x
+
+      - name: Run bid2x smoke tests
+        run: python -m pytest
