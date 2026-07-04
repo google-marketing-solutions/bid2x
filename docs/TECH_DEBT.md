@@ -15,9 +15,9 @@ low-risk modules and moving toward orchestration code.
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 1 | CI, ruff, pytest, contributor docs | Done on branch `phase-1-ci-foundation` (awaiting merge) |
-| 2 | Per-file cleanup (this register) | Not started |
-| 3 | Cross-cutting refactors (logging, config object, deps) | Not started |
+| 1 | CI, ruff, pytest, contributor docs | Done on branch `phase-1-ci-only` |
+| 2 | Per-file cleanup (this register) | Done on branch `integrate/phase-2` |
+| 3 | Cross-cutting refactors (logging, config object, deps) | In progress on `phase-3/config-object` |
 | 4 | New features | Not started |
 
 ---
@@ -279,4 +279,14 @@ Copy this when opening Phase 2 work:
 10. [ ] `bid2x_gtm.py` — golden tests, logging
 11. [ ] `bid2x_dv.py` — split into focused PRs
 12. [ ] `bid2x_spreadsheet.py` — nested-loop tests, writeback limit
-13. [ ] `budget2x/budget2x.js` — placeholder and structure
+13. [x] `budget2x/budget2x.js` — placeholder and structure
+
+### Phase 3 queue (cross-cutting)
+
+1. [ ] `bid2x_config.py` — typed config object; CLI returns config instead of only mutating globals
+2. [ ] Remaining `print()` → `logging` (spreadsheet, main, model modules)
+3. [ ] `bid2x_dv.py` — deduplicate `inspect.stack()` caller-context helper
+4. [ ] `bid2x_spreadsheet.py` — shared gspread retry helper
+5. [ ] `auth/bid2x_auth.py` — migrate off deprecated `oauth2client`
+6. [ ] Dependency refresh — one family per PR (`pip-audit`)
+7. [ ] `bid2x/Dockerfile` — slim base image verification
