@@ -36,30 +36,8 @@ class Error(Exception):
   """Base exception for Bid2xModel."""
 
 
-class Bid2xModel():
-  """GTM object for DV zone model.
-
-    Attributes:
-        name: str
-        campaign_id: int
-        advertiser_id: int
-        algorithm_id: int
-        cb_algorithm: str
-        debug: bool
-        update_row: int
-        update_col: int
-        test_row: int
-        test_col: int
-
-    Methods:
-      __init__:
-      __str__:
-      set_name:
-      set_spreadsheet_row_col:
-      set_cb_algorithm:
-      update_custom_bidding_scripts:
-
-  """
+class Bid2xModel:
+  """Model for a DV360 zone and its spreadsheet status coordinates."""
 
   # Set up properties of this class.
   name: str
@@ -77,7 +55,7 @@ class Bid2xModel():
       self, name: str, campaign_id: int, advertiser_id: int, algorithm_id: int,
       debug: bool, update_row: int, update_col: int, test_row: int,
       test_col: int
-  ):
+  ) -> None:
     self.name = name
     self.campaign_id = campaign_id
     self.advertiser_id = advertiser_id

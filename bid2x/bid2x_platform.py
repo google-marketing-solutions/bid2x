@@ -1,6 +1,6 @@
 """BidToX - bid2x_platform application module.
 
-  Copyright 2025 Google Inc.
+  Copyright 2025 Google LLC
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -33,23 +33,14 @@ ABC = abc.ABC
 
 
 class Platform(ABC):
-  """Abstract class for the platform the script is being used.
-
-      Attributes:
-          None.
-
-      Methods:
-          process_script(self, service): Abstract method for running the
-              script creation and uploading to the correct platform.
-          print_dataframe(self, debug, input_df): Prints given dataframe.
-  """
+  """Abstract base class for DV360 and GTM platform implementations."""
 
   @abstractmethod
-  def __str__(self):
+  def __str__(self) -> str:
     pass
 
   @abstractmethod
-  def process_script(self, service: Any):
+  def process_script(self, service: Any, *args: Any, **kwargs: Any) -> Any:
     pass
 
   @abstractmethod
@@ -57,16 +48,15 @@ class Platform(ABC):
     pass
 
   def print_dataframe(self, debug: bool, input_df: DataFrame) -> None:
-    """Converts a dataframe to a string and prints it to stdout.
+    """Print a dataframe when debug output is enabled.
 
     Args:
-        debug: prints output if debug is true.
-        input_df: any dataframe.
+        debug: When True, write the dataframe to stdout.
+        input_df: Dataframe to display.
 
     Returns:
         None.
     """
-    # Make sure indexes pair with number of rows.
     df = input_df.reset_index()
 
     if debug:

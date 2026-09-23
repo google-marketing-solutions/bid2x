@@ -25,8 +25,9 @@
 """
 
 import datetime
+import logging
 import time
-from typing import Any, List
+from typing import Any
 
 from bid2x_util import is_recoverable_http_error
 import bid2x_var
@@ -36,6 +37,85 @@ import gspread
 
 HttpError = errors.HttpError
 GoogleAPICallError = exceptions.GoogleAPICallError
+logger = logging.getLogger(__name__)
+
+COLUMN_OFFSET = 64
+MAX_RETRIES = 5
+
+YOUTUBE_LINE_ITEM_TYPES = frozenset({
+    'LINE_ITEM_TYPE_YOUTUBE_AND_PARTNERS_NON_SKIPPABLE',
+    'LINE_ITEM_TYPE_YOUTUBE_AND_PARTNERS_REACH',
+    'LINE_ITEM_TYPE_YOUTUBE_AND_PARTNERS_ACTION',
+})
+
+
+def column_number_to_letter(
+    col_number: int, offset: int = COLUMN_OFFSET
+) -> str:
+  """Convert a 1-based column number to a spreadsheet column letter."""
+  return chr(offset + col_number)
+
+
+def build_sheet_clear_range(
+    column_status: str,
+    column_advertiser_id: str,
+    first_row: int,
+    last_row: int,
+) -> str:
+  """Build an A1-style range string for clearing DV line-item rows."""
+  return f'{column_status}{first_row}:{column_advertiser_id}{last_row}'
+
+
+def should_include_line_item(
+    line_item: dict[str, Any], line_item_name_pattern: str
+) -> bool:
+  """Return True when a DV360 line item should be written to the sheet."""
+  if line_item.get('lineItemType') in YOUTUBE_LINE_ITEM_TYPES:
+    return False
+  display_name = line_item.get('displayName', '')
+  return line_item_name_pattern in display_name
+
+
+def build_line_item_sheet_rows(
+    line_items: list[dict[str, Any]],
+    line_item_name_pattern: str,
+) -> tuple[list[list[Any]], list[list[str]]]:
+  """Build DV line-item rows and optional auto-on values for Sheets."""
+  line_items_data_for_sheet: list[list[Any]] = []
+  auto_ons_data_for_sheet: list[list[str]] = []
+
+  for line_item in line_items:
+    if not should_include_line_item(line_item, line_item_name_pattern):
+      continue
+
+    line_items_data_for_sheet.append([
+        line_item.get('entityStatus'),
+        line_item.get('lineItemId'),
+        line_item.get('displayName'),
+        line_item.get('lineItemType'),
+        line_item.get('campaignId'),
+        line_item.get('advertiserId'),
+    ])
+
+    display_name = line_item.get('displayName', '')
+    if line_item_name_pattern in display_name:
+      auto_ons_data_for_sheet.append(['Yes'])
+    else:
+      auto_ons_data_for_sheet.append(['No'])
+
+  return line_items_data_for_sheet, auto_ons_data_for_sheet
+
+
+def extract_enabled_line_item_ids(rows: list[dict[str, Any]]) -> list[Any]:
+  """Return unique line item IDs marked Yes for custom bidding."""
+  processed_line_items: list[Any] = []
+  for row in rows:
+    if row.get('Generate Custom Bidding', '').lower() != 'yes':
+      continue
+    line_item_id = row.get('Line Item ID')
+    if line_item_id not in processed_line_items:
+      processed_line_items.append(line_item_id)
+  return processed_line_items
 
 
 class Bid2xSpreadsheet:
@@ -96,11 +176,11 @@ class Bid2xSpreadsheet:
   debug: bool
   trace: bool
   clear_onoff: bool
-  gc: gspread
-  COLUMN_OFFSET = 64  # Add to column # to get actual column letter.
-  MAX_RETRIES = 5  # Number of retries when API calls fail.
+  gc: gspread.Client
+  COLUMN_OFFSET = COLUMN_OFFSET
+  MAX_RETRIES = MAX_RETRIES
 
-  def __init__(self, sheet_id: str, auth_filename: str):
+  def __init__(self, sheet_id: str, auth_filename: str) -> None:
     self.sheet_id = sheet_id
     self.sheet_url = f'https://docs.google.com/spreadsheets/d/{sheet_id}/edit'
     self.json_auth_file = auth_filename
@@ -115,7 +195,7 @@ class Bid2xSpreadsheet:
     self.column_custom_bidding = 'K'
     self.debug = False
     self.trace = False
-    self.clear_onoff = True
+    self.clear_onoff = False
     self.gc = gspread.service_account(filename=auth_filename)
 
   def __str__(self) -> str:
@@ -143,7 +223,7 @@ class Bid2xSpreadsheet:
           f'column_lineitem_name: {self.column_lineitem_name}\n'
           f'column_lineitem_type: {self.column_lineitem_type}\n'
           f'column_campaign_id: {self.column_campaign_id}\n'
-          f'column_advertising: {self.column_advertiser_id}\n'
+          f'column_advertiser_id: {self.column_advertiser_id}\n'
           f'column_custom_bidding:{self.column_custom_bidding}\n'
           f'clear_onoff: {self.clear_onoff}'
       )
@@ -202,7 +282,7 @@ class Bid2xSpreadsheet:
     if not zone_array or not spreadsheet_id:
       # As per GoB Gerrit CL 131576:
       # Change all prints to logging calls to permit centralized control.
-      print('Missing zone_array or spreadsheet_id. Exiting.')
+      logger.error('Missing zone_array or spreadsheet_id. Exiting.')
       return False
 
     # Walk the array of bid2x_model objects and do
@@ -210,7 +290,7 @@ class Bid2xSpreadsheet:
     for zone in zone_array:
 
       if self.debug:
-        print(f'Current zone object is: {zone.name}')
+        logger.debug(f'Current zone object is: {zone.name}')
 
       # Clear the sheet in the range A2:F1000.
       self.clear_sheet(zone.name)
@@ -266,7 +346,7 @@ class Bid2xSpreadsheet:
                 f'for advertiser {zone.advertiser_id}: {e}'
             )
             if is_recoverable_http_error(e.resp.status):
-              print(f'Retrying in {delay} seconds...')
+              logger.warning(f'Retrying in {delay} seconds...')
               time.sleep(delay)
               retry_count += 1
               delay *= 2
@@ -343,41 +423,11 @@ class Bid2xSpreadsheet:
 
       # Section 2:  Walk results and prep an array for Google Sheets update.
 
-      line_items_data_for_sheet: List[List[Any]] = []
-      auto_ons_data_for_sheet: List[List[str]] = []
-
-      for line_item in all_line_items_for_zone:
-        # Generate the rows of line item data for transfer to Google
-        # Sheets except do not allow line item types that are YouTube
-        # related.
-        if (
-            line_item.get('lineItemType')
-            not in (
-                'LINE_ITEM_TYPE_YOUTUBE_AND_PARTNERS_NON_SKIPPABLE',
-                'LINE_ITEM_TYPE_YOUTUBE_AND_PARTNERS_REACH',
-                'LINE_ITEM_TYPE_YOUTUBE_AND_PARTNERS_ACTION',
-            )
-            # Note here for terwilleger@google.com:
-            # as discussed, an empty string ('') is still 'in' the displayName.
-            and line_item_name_pattern in line_item['displayName']
-        ):
-
-          line_items_data_for_sheet.append(
-              [
-                  line_item.get('entityStatus'),
-                  line_item.get('lineItemId'),
-                  line_item.get('displayName'),
-                  line_item.get('lineItemType'),
-                  line_item.get('campaignId'),
-                  line_item.get('advertiserId'),
-              ]
+      line_items_data_for_sheet, auto_ons_data_for_sheet = (
+          build_line_item_sheet_rows(
+              all_line_items_for_zone, line_item_name_pattern
           )
-
-          # Build array for optional auto_on.
-          if line_item_name_pattern in line_item.get('displayName'):
-            auto_ons_data_for_sheet.append(['Yes'])
-          else:
-            auto_ons_data_for_sheet.append(['No'])
+      )
 
       # Section 3 - Connect to spreadsheet to the tab representing the
       #             current zone.
@@ -427,7 +477,7 @@ class Bid2xSpreadsheet:
           # If the error is a rate limit or connection error,
           # wait and try again.
           if is_recoverable_http_error(err.resp.status):
-            print(f'Retrying in {delay} seconds...')
+            logger.warning(f'Retrying in {delay} seconds...')
             time.sleep(delay)
             retry_count += 1
             delay *= 2
@@ -460,23 +510,25 @@ class Bid2xSpreadsheet:
         except gspread.exceptions.APIError as e:
           print(
               'Error communicating with Google Sheets API while ',
-              f'updating tab f{zone.name}:{e}',
+              f'updating tab "{zone.name}": {e}',
           )
           raise  # Reraises the exception.
         except TimeoutError:
           print(
-              f'Request timed out while updating tab f{zone.name}. ',
+              f'Request timed out while updating tab "{zone.name}". ',
               'Please check your network connection.',
           )
           raise  # Reraises the exception.
         except gspread.exceptions.GSpreadException as e:
-          print(f'Error with gspread while updating tab f{zone.name}:{e}')
+          logger.error(
+              'Error with gspread while updating tab "%s": %s', zone.name, e
+          )
           raise  # Reraises the exception.
         except HttpError as err:
           # If the error is a rate limit or connection error,
           # wait and try again.
           if is_recoverable_http_error(err.resp.status):
-            print(f'Retrying in {delay} seconds...')
+            logger.warning(f'Retrying in {delay} seconds...')
             time.sleep(delay)
             retry_count += 1
             delay *= 2
@@ -526,7 +578,7 @@ class Bid2xSpreadsheet:
           # If the error is a rate limit or connection error,
           # wait and try again.
           if is_recoverable_http_error(err.resp.status):
-            print(f'Retrying in {delay} seconds...')
+            logger.warning(f'Retrying in {delay} seconds...')
             time.sleep(delay)
             retry_count += 1
             delay *= 2
@@ -600,7 +652,7 @@ class Bid2xSpreadsheet:
         # If the error is a rate limit or connection error,
         # wait and try again.
         if is_recoverable_http_error(err.resp.status):
-          print(f'Retrying in {delay} seconds...')
+          logger.warning(f'Retrying in {delay} seconds...')
           time.sleep(delay)
           retry_count += 1
           delay *= 2
@@ -616,11 +668,11 @@ class Bid2xSpreadsheet:
           raise
 
       if current_tab is None:
-        print('current_tab is None - cannot proceed')
+        logger.error('current_tab is None - cannot proceed')
         return []
 
     if type(current_tab).__name__ != 'Worksheet':
-      print('current_tab is not a gspread.models.Worksheet - cannot proceed')
+      logger.error('current_tab is not a gspread.models.Worksheet - cannot proceed')
       return []
 
     list_of_dicts = None
@@ -648,7 +700,7 @@ class Bid2xSpreadsheet:
         # If the error is a rate limit or connection error,
         # wait and try again.
         if is_recoverable_http_error(err.resp.status):
-          print(f'Retrying in {delay} seconds...')
+          logger.warning(f'Retrying in {delay} seconds...')
           time.sleep(delay)
           retry_count += 1
           delay *= 2
@@ -664,21 +716,10 @@ class Bid2xSpreadsheet:
           raise
 
     if current_tab is None or list_of_dicts is None:
-      print('current_tab is None - cannot proceed')
+      logger.error('current_tab is None - cannot proceed')
       return []
 
-    # Create an empty list of processed line items.
-    # Some Line Items may be disabled, we are building a list of line item
-    # IDs that are enabled for the custom bidding to pass back.
-    processed_line_items = []
-    for row in list_of_dicts:
-      # Change these static texts to variables.  For now the
-      # spreadsheet columns are bound to these names.
-      if row['Generate Custom Bidding'].lower() == 'yes':
-        if processed_line_items.count(row['Line Item ID']) == 0:
-          processed_line_items.append(row['Line Item ID'])
-
-    return processed_line_items
+    return extract_enabled_line_item_ids(list_of_dicts)
 
   def clear_sheet(self, zone_string: str) -> bool:
     """Clear specific cells in the passed tab name.
@@ -736,7 +777,7 @@ class Bid2xSpreadsheet:
         # If the error is a rate limit or connection error,
         # wait and try again.
         if is_recoverable_http_error(err.resp.status):
-          print(f'Retrying in {delay} seconds...')
+          logger.warning(f'Retrying in {delay} seconds...')
           time.sleep(delay)
           retry_count += 1
           delay *= 2
@@ -751,13 +792,12 @@ class Bid2xSpreadsheet:
         else:
           raise
 
-    # Build the address string containing the range used
-    # to 'clear' the spreadsheet
-    clear_string = f'{self.column_status}'
-    clear_string += f'{bid2x_var.SPREADSHEET_FIRST_DATA_ROW}'
-    clear_string += ':'
-    clear_string += f'{self.column_advertiser_id}'
-    clear_string += f'{bid2x_var.SPREADSHEET_LAST_DATA_ROW}'
+    clear_string = build_sheet_clear_range(
+        self.column_status,
+        self.column_advertiser_id,
+        bid2x_var.SPREADSHEET_FIRST_DATA_ROW,
+        bid2x_var.SPREADSHEET_LAST_DATA_ROW,
+    )
 
     retry_count = 0
     delay = bid2x_var.HTTP_RETRY_TIMEOUT
@@ -783,7 +823,7 @@ class Bid2xSpreadsheet:
         # If the error is a rate limit or connection error,
         # wait and try again.
         if is_recoverable_http_error(err.resp.status):
-          print(f'Retrying in {delay} seconds...')
+          logger.warning(f'Retrying in {delay} seconds...')
           time.sleep(delay)
           retry_count += 1
           delay *= 2
@@ -833,7 +873,7 @@ class Bid2xSpreadsheet:
           # If the error is a rate limit or connection error,
           # wait and try again.
           if is_recoverable_http_error(err.resp.status):
-            print(f'Retrying in {delay} seconds...')
+            logger.warning(f'Retrying in {delay} seconds...')
             time.sleep(delay)
             retry_count += 1
             delay *= 2
@@ -881,10 +921,10 @@ class Bid2xSpreadsheet:
           status_tab_name
       )
     except gspread.exceptions.SpreadsheetNotFound:
-      print(f'Error: Spreadsheet not found for worksheet {status_tab_name}')
+      logger.error(f'Error: Spreadsheet not found for worksheet {status_tab_name}')
       raise  # Reraises the exception.
     except gspread.exceptions.WorksheetNotFound as e:
-      print(f'Error connecting to worksheet CB_Scripts: {e}')
+      logger.error(f'Error connecting to worksheet CB_Scripts: {e}')
       raise  # Reraises the exception.
     except gspread.exceptions.APIError as e:
       print(
@@ -893,19 +933,19 @@ class Bid2xSpreadsheet:
       )
       raise  # Reraises the exception.
     except TimeoutError:
-      print('Request timed out. Please check your network connection.')
+      logger.error('Request timed out. Please check your network connection.')
       raise  # Reraises the exception.
     except gspread.exceptions.GSpreadException as e:
-      print(f'An unexpected error occurred: {e}')
+      logger.info(f'An unexpected error occurred: {e}')
       raise  # Reraises the exception.
 
     # Work out the row and column for this update.
     if not test_run:
       update_row = zone.update_row
-      update_col = chr(Bid2xSpreadsheet.COLUMN_OFFSET + zone.update_col)
+      update_col = column_number_to_letter(zone.update_col)
     else:
       update_row = zone.test_row
-      update_col = chr(Bid2xSpreadsheet.COLUMN_OFFSET + zone.test_col)
+      update_col = column_number_to_letter(zone.test_col)
 
     # Write the most recent custom bidding function to the right
     # place on the CB_Scripts tab.
@@ -918,7 +958,7 @@ class Bid2xSpreadsheet:
             range_name=f'{update_col}{update_row}',
         )
       except Exception as e:
-        print(f'Error updating test run into worksheet: {e}')
+        logger.error(f'Error updating test run into worksheet: {e}')
         raise  # Reraises the exception.
 
     return True
@@ -941,7 +981,7 @@ class Bid2xSpreadsheet:
     self.json_auth_file = source['json_auth_file']
     self._platform_type = platform_type
 
-    if self._platform_type == bid2x_var.PlatformType.DV:
+    if self._platform_type == bid2x_var.PlatformType.DV.value:
       self.column_status = source['column_status']
       self.column_lineitem_id = source['column_lineitem_id']
       self.column_lineitem_name = source['column_lineitem_name']
@@ -971,16 +1011,14 @@ class Bid2xSpreadsheet:
     # Update CB_Scripts tab
     # Spreadsheet tab name should match key in dict.
     try:
-      print('custom bidding')
-      print(cust_bidding_function_string)
       cbscripts_sheet = self.gc.open_by_key(self.sheet_id).worksheet(
           'CB_Scripts'
       )
     except gspread.exceptions.SpreadsheetNotFound:
-      print('Error: Spreadsheet not found for worksheet CB_Scripts.')
+      logger.error('Error: Spreadsheet not found for worksheet CB_Scripts.')
       raise  # Reraises the exception.
     except gspread.exceptions.WorksheetNotFound as e:
-      print(f'Error connecting to worksheet CB_Scripts: {e}')
+      logger.error(f'Error connecting to worksheet CB_Scripts: {e}')
       raise  # Reraises the exception.
     except gspread.exceptions.APIError as e:
       print(
@@ -989,18 +1027,18 @@ class Bid2xSpreadsheet:
       )
       raise  # Reraises the exception.
     except TimeoutError:
-      print('Request timed out. Please check your network connection.')
+      logger.error('Request timed out. Please check your network connection.')
       raise  # Reraises the exception.
     except gspread.exceptions.GSpreadException as e:
-      print(f'An unexpected error occurred: {e}')
+      logger.info(f'An unexpected error occurred: {e}')
       raise  # Reraises the exception.
     # Work out the row and column for this update.
     if not test_run:
       update_row = zone.update_row
-      update_col = chr(Bid2xSpreadsheet.COLUMN_OFFSET + zone.update_col)
+      update_col = column_number_to_letter(zone.update_col)
     else:
       update_row = zone.test_row
-      update_col = chr(Bid2xSpreadsheet.COLUMN_OFFSET + zone.test_col)
+      update_col = column_number_to_letter(zone.test_col)
     # Write the most recent custom bidding function to the right
     # place on the CB_Scripts tab.
     if update_row:
@@ -1011,6 +1049,6 @@ class Bid2xSpreadsheet:
             range_name=f'{update_col}{update_row}',
         )
       except Exception as e:
-        print(f'Error updating test run into worksheet: {e}')
+        logger.error(f'Error updating test run into worksheet: {e}')
         raise  # Reraises the exception.
     return True
