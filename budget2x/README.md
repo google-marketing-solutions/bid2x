@@ -65,7 +65,7 @@ This script automates the process of updating daily budgets for Google Ads campa
 
 *   **MCC Level:** This script MUST be installed and run from an MCC account.
 *   **Sub-MCC Targeting:** The script switches context to the specific sub-MCC account ID listed in Column B of the `KeySheet` for each active zone.
-*   **Campaign Type:** The current version of the `setCampaignBudget` function specifically looks for *Performance Max* campaigns using `AdsApp.performanceMaxCampaigns()`. Budgets for other campaign types will not be updated by this version.
+*   **Campaign Type:** `setCampaignBudget` searches Performance Max, Shopping, Video, and generic Search/Display campaign selectors to find campaigns by ID before updating budgets.
 *   **Error Handling:** The script includes logging for common errors such as inability to open the spreadsheet, missing sheets, or invalid cell references. Check the execution logs in the Ads Scripts interface after running.
 *   **Idempotency:** If the new budget in the sheet is the same as the campaign's current budget, the script will skip the update for that campaign to save time and API operations.
 

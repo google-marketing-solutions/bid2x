@@ -18,7 +18,7 @@
   ------------
 
   This Python application can be used to dynamically create SA360(GTM)/DV360
-  Custom Bidding Scipts.
+  Custom Bidding Scripts.
 
   The SA360 application uses Google Tag Manager custom variable templates as
   scripts to modify bidding multipliers.  There is no direct interfacing
@@ -35,14 +35,12 @@
   Consult the accompanying 'requirements.txt' file for the list of dependencies.
 """
 
-# Import required libraries & modules
 import base64
 import datetime
 import json
 import sys
 from typing import Any
 
-import bid2x_application
 from bid2x_application import Bid2xApplication
 from bid2x_args import process_command_line_args
 from bid2x_gtm_model import Bid2xGTMModel
@@ -51,6 +49,8 @@ import bid2x_util as util
 import bid2x_var
 import functions_framework
 import gspread
+
+app: Bid2xApplication | None = None
 
 
 # Triggered from a message on a Cloud Pub/Sub topic.
@@ -90,62 +90,42 @@ def hello_pubsub(cloud_event: Any) -> None:
   main(sys.argv)
 
 
-def main(argv: Any) -> int:
-  """This is the main function of the script.
+def main(argv: list[str]) -> int:
+  """Run the Bid2X main loop for the configured application object.
 
   Args:
-      argv: The command line arguments.
+      argv: Command-line arguments (typically sys.argv).
+
   Returns:
-      True if the main loop completed successfully.
-      False if there was an error or failure.
+      0 on success, -1 on failure.
 
-      It performs the following actions:
-
-      1. Reads config from a file.
-      2. Does one of the following:
-          a) [Both DV360 and GTM] Creates the custom bidding script and saves
-              it to DV360/GTM.
-          b) [DV360-only] Lists all algorithms at an advertiser level.
-          c) [DV360-only] Lists all scripts at an advertiser level.
-          d) [DV360-only] Create new algorithm at partner level.
-          e) [DV360-only] Update reference spreadsheet.
-          f) [DV360-only] Remove algorithm.
-          g) [DV360-only] Update custom bidding script to reference sheet.
-
-      Example usage:
-          python main.py -i=dv_config.json
+  Example usage:
+      python main.py -i=dv_config.json
   """
   global app
 
   current_datetime = datetime.datetime.now()
   print(f'bid2x - Startup  {current_datetime} with argv: {argv}')
-  try:
-    bid2x_var.SPREADSHEET_URL
-  except NameError:
-    print('No args exist, preload a known good set')
-    app = create_objects_from_json_file('sample_config.json')
+
+  if app is None:
+    print('App object not valid - exiting...')
+    return -1
 
   if app.platform_type == bid2x_var.PlatformType.DV.value:
-    # This is a DV service.
     if not app.auth.auth_dv_service(
         app.json_auth_file, app.service_account_email
     ):
       print('Failure on auth to DV')
       return -1
   elif app.platform_type == bid2x_var.PlatformType.GTM.value:
-    # This is a GTM/SA service.
     if not app.auth.auth_gtm_service(
         app.json_auth_file, app.service_account_email
     ):
       print('Failure on auth to GTM')
       return -1
 
-  if not app:
-    print('App object not valid - exiting...')
-    return -1
-  else:
-    print('Start-up Configuration:')
-    print(f'{app}')
+  print('Start-up Configuration:')
+  print(f'{app}')
 
   # Is this a DV360 type connection?
   if app.platform_type == bid2x_var.PlatformType.DV.value:
@@ -351,13 +331,16 @@ def main(argv: Any) -> int:
   return 0
 
 
-def create_objects_from_json_file(filename: str) -> Bid2xApplication:
-  """Create app object from a JSON file.
+def create_objects_from_json_file(
+    filename: str | None,
+) -> Bid2xApplication | None:
+  """Create app object from a JSON file or CLI defaults.
 
   Args:
-      filename: The name of the JSON file to load.
+      filename: JSON config path, or None/empty to use bid2x_var defaults.
+
   Returns:
-      The created app object.
+      The created app object, or None when platform_type is invalid.
   """
 
   global app
@@ -382,7 +365,7 @@ def create_objects_from_json_file(filename: str) -> Bid2xApplication:
       )
     else:
       print('Invalid platform type')
-      return  # Or should this be an immediate exit?
+      return None
 
     app.start_service()
 
@@ -499,16 +482,14 @@ def create_objects_from_json_file(filename: str) -> Bid2xApplication:
   return app
 
 
-# Walk sys.argv using argparse to process passed arguments.
-# The use of command line arguments is meant for development or for
-# running the system from the command line.
-process_command_line_args()
+def initialize_app() -> Bid2xApplication | None:
+  """Parse CLI args and create the global application object."""
+  global app
+  process_command_line_args()
+  app = create_objects_from_json_file(bid2x_var.INPUT_FILE)
+  return app
 
-app: bid2x_application.Bid2xApplication = None
-# Create objects based on passed file.
-app = create_objects_from_json_file(bid2x_var.INPUT_FILE)
 
-# If our entrypoint is main then run it.  The function hello_pubsub() is
-# the entry point when called through GCP Cloud Functions.
 if __name__ == '__main__':
-  main(sys.argv)
+  initialize_app()
+  raise SystemExit(main(sys.argv))

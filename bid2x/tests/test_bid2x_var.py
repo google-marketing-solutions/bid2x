@@ -25,3 +25,16 @@ def test_platform_type_enum_values() -> None:
 
 def test_bidding_factor_bounds() -> None:
   assert bid2x_var.BIDDING_FACTOR_LOW < bid2x_var.BIDDING_FACTOR_HIGH
+
+
+def test_debug_and_trace_default_to_false() -> None:
+  assert bid2x_var.DEBUG is False
+  assert bid2x_var.TRACE is False
+
+
+def test_auth_defaults_are_singular() -> None:
+  assert bid2x_var.JSON_AUTH_FILE == 'client-secret.json'
+  assert (
+      bid2x_var.SERVICE_ACCOUNT_EMAIL
+      == 'bid-to-x@client-gcp.iam.gserviceaccount.com'
+  )

@@ -44,4 +44,4 @@ Work through modules from small leaf files toward orchestration code:
 5. `budget2x/budget2x.js`
 
 Track larger efforts in GitHub issues and link each pull request to the issue
-it addresses.
+it addresses. See [TECH_DEBT.md](TECH_DEBT.md) for the file-by-file backlog.

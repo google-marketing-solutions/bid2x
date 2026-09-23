@@ -134,13 +134,88 @@ const BUDGET_HISTORY_SHEET_NAME = 'BudgetHistory';
 //    OR 'Generic_Campaign'.
 const CAMPAIGN_NAME_REGEX_FILTER = '.*';
 
-// Set DEBUG = 1 for additional output in the logs.
-const DEBUG = 1;
+// Set DEBUG = true for additional output in the logs.
+const DEBUG = false;
 
 // --- SCRIPT CONFIGURATION END---
 
 /**
- * The main function that orchestrates the budget update process.
+ * Removes hyphens from a Google Ads customer ID.
+ * Mirrored in budget2x_helpers.js for Node tests.
+ * @param {string|number} accountId
+ * @return {string}
+ */
+function cleanAccountId(accountId) {
+  return accountId.toString().replace(/-/g, '');
+}
+
+/**
+ * Returns true when a sheet status value means "active".
+ * @param {string|number|boolean} status
+ * @return {boolean}
+ */
+function isStatusOn(status) {
+  return Boolean(
+      status && status.toString().trim().toLowerCase() === 'on');
+}
+
+/**
+ * Returns true when a KeySheet row has no zone, tab, or reference set.
+ * @param {string} zoneName
+ * @param {string} tabName
+ * @param {string} reference
+ * @return {boolean}
+ */
+function isKeySheetRowEmpty(zoneName, tabName, reference) {
+  return !zoneName && !tabName && !reference;
+}
+
+/**
+ * Returns true when a budget cell contains a positive numeric value.
+ * @param {string|number} newBudget
+ * @return {boolean}
+ */
+function isValidBudgetValue(newBudget) {
+  return newBudget !== '' &&
+      !isNaN(parseFloat(newBudget)) &&
+      parseFloat(newBudget) > 0;
+}
+
+/**
+ * Returns true when a campaign name matches the configured regex filter.
+ * Invalid regex patterns fail closed (no match).
+ * @param {string} campaignName
+ * @param {string} regexFilter
+ * @return {boolean}
+ */
+function matchesCampaignNameFilter(campaignName, regexFilter) {
+  if (!regexFilter) {
+    return true;
+  }
+  try {
+    return new RegExp(regexFilter).test(campaignName);
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * Parses a KeySheet row into normalized zone configuration fields.
+ * @param {!Array} row
+ * @return {!Object}
+ */
+function parseKeySheetRow(row) {
+  return {
+    zoneName: row[COL_ZONE_NAME],
+    mccId: row[COL_MCC],
+    tabName: row[COL_TAB_NAME],
+    status: row[COL_STATUS],
+    reference: row[COL_REFERENCE],
+  };
+}
+
+/**
+ * The main function that orchestrates the budget update process.
  * It reads the KeySheet to determine which tabs to process.
  */
 function main() {
@@ -169,25 +244,23 @@ function main() {
     const keySheetData = keySheet.getDataRange().getValues();
 
     // Iterate over each config row in the KeySheet, skipping the header row.
-    for (let i = KEY_SHEET_HEADER_ROWS; i < keySheetData.length; i++) {
-        const row = keySheetData[i];
-        const zoneName = row[COL_ZONE_NAME];
-        const mccId = row[COL_MCC]; // Retrieve the MCC ID for the current row.
-        const tabName = row[COL_TAB_NAME];
-        const status = row[COL_STATUS];
-        const reference = row[COL_REFERENCE];
+    for (let i = KEY_SHEET_HEADER_ROWS; i < keySheetData.length; i++) {
+        const row = keySheetData[i];
+        const config = parseKeySheetRow(row);
+        const zoneName = config.zoneName;
+        const mccId = config.mccId;
+        const tabName = config.tabName;
+        const status = config.status;
+        const reference = config.reference;
 
-        // If the row is entirely empty, skip to the next row.
-        if (!zoneName && !tabName && !reference) {
-            continue;
-        }
+        if (isKeySheetRowEmpty(zoneName, tabName, reference)) {
+            continue;
+        }
 
-        Logger.log('--------------------------------------------------');
+        Logger.log('--------------------------------------------------');
 
-        // Process the row only if its Status is explicitly 'On'.
-        if (status && status.toString().trim().toLowerCase() === 'on') {
-            // Validate that an MCC ID is provided for 'On' status rows.
-            if (!mccId || mccId.toString().trim() === '') {
+        if (isStatusOn(status)) {
+            if (!mccId || mccId.toString().trim() === '') {
                 Logger.log('Skipping Zone: "' + zoneName + '" | Tab: "' +
                     tabName + '" due to missing MCC ID in KeySheet. ' +
                     'Please ensure Column B (MCC) is populated ' +
@@ -200,15 +273,13 @@ function main() {
                 '" | Tab: "' + tabName + '"');
 
             // Update the spreadsheet with current campaign data if enabled ---
-            if (ENABLE_UPDATE_TAB_REPORTING) {
-                UpdateTab(spreadsheet, tabName, mccId.toString().trim(),
+            if (ENABLE_UPDATE_TAB_REPORTING) {
+                UpdateTab(spreadsheet, tabName, cleanAccountId(mccId),
                             reference);
-            }
+            }
 
-            // Call applyBudgetsFromTab, passing the spreadsheet, tab name,
-            // reference, and MCC ID.
-            applyBudgetsFromTab(spreadsheet, tabName, reference,
-                mccId.toString().trim());
+            applyBudgetsFromTab(spreadsheet, tabName, reference,
+                cleanAccountId(mccId));
         } else {
             // Log that the zone is being skipped if its status is not 'On'.
             Logger.log('Skipping Zone: "' + zoneName + '" (Status is "' +
@@ -294,8 +365,8 @@ function UpdateTab(spreadsheet, tabName, accountIdToSelect, startReference) {
         return;
     }
 
-    const originalAccount = AdsApp.currentAccount();
-    const cleanedAccountId = accountIdToSelect.replace(/-/g, '');
+    const originalAccount = AdsApp.currentAccount();
+    const cleanedAccountId = cleanAccountId(accountIdToSelect);
 
     const accountIterator =
         AdsManagerApp.accounts().withIds([cleanedAccountId]).get();
@@ -346,19 +417,18 @@ function UpdateTab(spreadsheet, tabName, accountIdToSelect, startReference) {
     }
 
     // Fetch all campaigns in the account using the helper function
-    const allCampaignsInAccount = getAllCampaignsInAccount();
-    const regex = new RegExp(CAMPAIGN_NAME_REGEX_FILTER);
+    const allCampaignsInAccount = getAllCampaignsInAccount();
 
-    for (const campaignEntry of allCampaignsInAccount) {
-        const campaign = campaignEntry.campaign; // Get the campaign object
-        const campaignType = campaignEntry.type; // Get assigned type string
+    for (const campaignEntry of allCampaignsInAccount) {
+        const campaign = campaignEntry.campaign;
+        const campaignType = campaignEntry.type;
 
-        try {
-            const campaignName = campaign.getName();
-            // Apply campaign name regex filter here for reporting
-            if (CAMPAIGN_NAME_REGEX_FILTER && !campaignName.match(regex)) {
-                continue; // Skip if name doesn't match the filter
-            }
+        try {
+            const campaignName = campaign.getName();
+            if (!matchesCampaignNameFilter(
+                campaignName, CAMPAIGN_NAME_REGEX_FILTER)) {
+                continue;
+            }
 
             // Correct status retrieval
             const campaignStatus = campaign.isEnabled() ? 'ENABLED' : 'PAUSED';
@@ -461,7 +531,7 @@ function applyBudgetsFromTab(spreadsheet, tabName, startReference, accountIdToSe
         + originalAccount.getCustomerId());
 
     // Clean the account ID by removing hyphens, just to be sure.
-    const cleanedAccountId = accountIdToSelect.replace(/-/g, '');
+    const cleanedAccountId = cleanAccountId(accountIdToSelect);
 
     const accountIterator =
         AdsManagerApp.accounts().withIds([cleanedAccountId]).get();
@@ -491,17 +561,14 @@ function applyBudgetsFromTab(spreadsheet, tabName, startReference, accountIdToSe
 
         // Check the individual campaign's status from the
         // spreadsheet before proceeding.
-        if (!campaignStatus ||
-            campaignStatus.toString().trim().toLowerCase() !== 'on') {
+        if (!isStatusOn(campaignStatus)) {
             Logger.log('     -> SKIPPING Campaign ID ' + campaignId +
                 ' because its individual status is "' + campaignStatus +
                 '", not "On".');
             continue;
         }
 
-        // Validate that the new budget is a valid, positive number.
-        if (newBudget === '' || isNaN(parseFloat(newBudget)) ||
-            parseFloat(newBudget) <= 0) {
+        if (!isValidBudgetValue(newBudget)) {
             Logger.log('     -> SKIPPING Campaign ID ' + campaignId +
                 ' due to invalid budget value: "' + newBudget + '".');
             continue;
@@ -562,10 +629,8 @@ function setCampaignBudget(spreadsheet, id, newBudget) {
     }
 
     const campaignName = campaign.getName();
-    const regex = new RegExp(CAMPAIGN_NAME_REGEX_FILTER);
-
-    // Apply campaign name regex filter here before setting budget
-    if (CAMPAIGN_NAME_REGEX_FILTER && !campaignName.match(regex)) {
+    if (!matchesCampaignNameFilter(
+        campaignName, CAMPAIGN_NAME_REGEX_FILTER)) {
         Logger.log(`    -> SKIPPING Campaign ID ${id} (${campaignName}) due to name not matching regex filter: "${CAMPAIGN_NAME_REGEX_FILTER}".`);
         return;
     }

@@ -17,16 +17,9 @@
   Description:
   ------------
 
-  This module contains the bid2x_model class which is used to
-  represent a zone in the Bid2X system.  It contains the necessary
-  information to run the system and perform the necessary lookups
-  in DV360 and Google Tag Manager.
+  This module contains the Bid2xGTMModel class which is used to
+  represent a GTM zone in the Bid2X system.
 """
-
-from googleapiclient import http
-
-HttpRequest = http.HttpRequest
-MediaFileUpload = http.MediaFileUpload
 
 
 class Error(Exception):
@@ -37,40 +30,8 @@ class InvalidArgumentError(Error):
   """Raised when an invalid argument is provided."""
 
 
-class Bid2xGTMModel():
-  """GTM object for GTM zone model.
-
-    Attributes:
-      name: The name of the zone.
-      account_id: The account ID of the GTM container.
-      container_id: The container ID of the GTM container.
-      workspace_id: The workspace ID of the GTM container.
-      variable_id: The variable ID of the GTM variable.
-      debug: True if debug mode is enabled.
-      trace: True if trace mode is enabled.
-      update_row: The row number to use for an update string when the
-                  custom bidding algorithm is changed (--au argument)
-      update_col: The column number (not letter) to use for an update string
-                  when the custom bidding algorithm is changed.
-      test_row:   The row number to use for an update string when a
-                  test is run (--at argument).
-      test_col:   The column number (not letter) to use for an update string
-                   when a test is run.
-
-    Methods:
-      __init__:
-        Initializes the Bid2xGTMModel object.
-      __str__:
-        Override str method for this object to return a sensible string.
-      set_name:
-        Setter function for the name attribute.
-      set_spreadsheet_row_col:
-        Setter function for row and col variables.
-      set_cb_algorithm:
-        Setter function for the custom bidding algorithm.
-
-
-  """
+class Bid2xGTMModel:
+  """Model for a GTM zone and its spreadsheet status coordinates."""
 
   # Set properties of this class.
   name: str
@@ -86,12 +47,13 @@ class Bid2xGTMModel():
   update_col: int
   test_row: int
   test_col: int
+  cb_algorithm: str
 
   def __init__(
       self, name: str, account_id: int, container_id: int, workspace_id: int,
       variable_id: int, update_row: int, update_col: int, test_row: int,
       test_col: int
-  ):
+  ) -> None:
 
     self.name = name
     self.account_id = account_id
@@ -99,8 +61,9 @@ class Bid2xGTMModel():
     self.workspace_id = workspace_id
     self.variable_id = variable_id
 
-    self.debug = True
-    self.trace = True
+    self.debug = False
+    self.trace = False
+    self.cb_algorithm = ''
 
     self.update_row = update_row
     self.update_col = update_col
@@ -121,10 +84,10 @@ class Bid2xGTMModel():
         f'\tcontainer_id: {self.container_id}\n'
         f'\tworkspace_id: {self.workspace_id}\n'
         f'\tvariable_id: {self.variable_id}\n'
-        f'\tupdate_row:{self.update_row}\n'
-        f'\tupdate_col:{self.update_col}\n'
-        f'\ttest_row:{self.test_row}\n'
-        f'\ttest_col:{self.test_col}\n'
+        f'\tupdate_row: {self.update_row}\n'
+        f'\tupdate_col: {self.update_col}\n'
+        f'\ttest_row: {self.test_row}\n'
+        f'\ttest_col: {self.test_col}\n'
     )
 
     return zone_str
